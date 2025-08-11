@@ -245,18 +245,41 @@ export async function getTimeSeriesDaily(days: number): Promise<TimeSeriesPoint[
   const db = new Database(dbPath, { readonly: true })
   try {
     const sql = `
-      SELECT DATE(st."Txn Date") as d,
+      SELECT substr(st."Txn Date",1,10) as d,
              COUNT(*) as transactionCount,
              COALESCE(SUM(st."Net Sales Amount"),0) as totalAmount,
              COUNT(DISTINCT st."Item Key") as uniqueProducts
       FROM "dbo_F_Sales_Transaction" st
-      WHERE DATE(st."Txn Date") >= DATE('now', ?)
-      GROUP BY DATE(st."Txn Date")
+      WHERE st."Txn Date" >= DATE('now', ?)
+      GROUP BY d
       ORDER BY d ASC
     `
     const fromOffset = `-${Math.max(0, days - 1)} day`
-    const rows = db.prepare(sql).all(fromOffset) as { d: string; transactionCount: number; totalAmount: number; uniqueProducts: number }[]
-    if (rows.length === 0) return []
+    let rows = db.prepare(sql).all(fromOffset) as { d: string; transactionCount: number; totalAmount: number; uniqueProducts: number }[]
+    // Fallback: if dataset has no recent dates relative to now, anchor to the latest date present
+    if (rows.length === 0) {
+      const maxRow = db
+        .prepare('SELECT DATE(MAX(st."Txn Date")) as maxd FROM "dbo_F_Sales_Transaction" st')
+        .get() as { maxd: string | null }
+      if (!maxRow?.maxd) return []
+      const endDate = maxRow.maxd
+      const startDateObj = new Date(`${endDate}T00:00:00Z`)
+      startDateObj.setDate(startDateObj.getDate() - Math.max(0, days - 1))
+      const startDate = startDateObj.toISOString().slice(0, 10)
+      rows = db
+        .prepare(`
+          SELECT substr(st."Txn Date",1,10) as d,
+                 COUNT(*) as transactionCount,
+                 COALESCE(SUM(st."Net Sales Amount"),0) as totalAmount,
+                 COUNT(DISTINCT st."Item Key") as uniqueProducts
+          FROM "dbo_F_Sales_Transaction" st
+          WHERE DATE(st."Txn Date") BETWEEN ? AND ?
+          GROUP BY d
+          ORDER BY d ASC
+        `)
+        .all(startDate, endDate) as { d: string; transactionCount: number; totalAmount: number; uniqueProducts: number }[]
+      if (rows.length === 0) return []
+    }
     const counts = rows.map(r => r.transactionCount)
     const mean = counts.reduce((a, b) => a + b, 0) / counts.length
     const variance = counts.reduce((a, b) => a + (b - mean) ** 2, 0) / counts.length
@@ -627,6 +650,10 @@ function applyFilters(
   filters: AnomalyFilters
 ): AnomalyDataPoint[] {
   let out = anomalies
+  // Apply anomaly gates first: score/severity thresholds if provided; default to sensible cutoff
+  const minScore = typeof filters.minScore === 'number' ? filters.minScore : 0.2
+  const minSeverity = typeof filters.minSeverity === 'number' ? filters.minSeverity : 1
+  out = out.filter(a => a.anomalyScore >= minScore && a.severity >= minSeverity)
   if (filters.severityLevels && filters.severityLevels.length > 0) {
     out = out.filter((a) => filters.severityLevels!.includes(a.severity))
   }

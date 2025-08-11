@@ -59,6 +59,9 @@ export interface AnomalyFilters {
   severityLevels?: number[]; // 1-5
   regions?: string[];
   dateRange?: { start: string | null; end: string | null };
+  // Optional thresholds to determine which data points are considered anomalies
+  minScore?: number; // default applied server-side if not provided
+  minSeverity?: number; // optional additional gate
 }
 
 // Additional analytics types used by dashboard components

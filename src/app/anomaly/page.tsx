@@ -139,10 +139,10 @@ export default async function AnomalyPage({
         <div className="container mx-auto px-6 py-5">
           <div className="flex items-end justify-between">
             <div>
-              <h1 className="text-3xl font-semibold tracking-tight">
+              <h1 className="text-3xl font-semibold text-whitetracking-tight">
                 Anomaly Detection
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-white">
                 Advanced customer behavior analysis with a guided narrative for
                 decision-making
               </p>
@@ -388,123 +388,7 @@ export default async function AnomalyPage({
         </div>
       </div>
 
-      {/* Page-scoped glass + motion styling */}
-      <style jsx global>{`
-        .anomaly-page {
-          --accent: #22d3ee; /* electric cyan */
-          --accent-2: #8b5cf6; /* vivid purple */
-          --glass-bg: rgba(255, 255, 255, 0.04);
-          --glass-border: rgba(255, 255, 255, 0.08);
-          --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-          scroll-behavior: smooth;
-        }
-        .anomaly-page [data-slot="card"] {
-          background: var(--glass-bg) !important;
-          border-color: var(--glass-border) !important;
-          backdrop-filter: blur(12px) saturate(120%);
-          -webkit-backdrop-filter: blur(12px) saturate(120%);
-          box-shadow: var(--glass-shadow);
-          transition: transform 220ms ease, box-shadow 220ms ease,
-            border-color 220ms ease, background-color 220ms ease;
-        }
-        .anomaly-page [data-slot="card"]:hover {
-          transform: translateY(-2px);
-          border-color: rgba(255, 255, 255, 0.14);
-          box-shadow: 0 12px 35px rgba(0, 0, 0, 0.45);
-        }
-        .anomaly-page [data-slot="card-title"] {
-          letter-spacing: 0.01em;
-        }
-        .anomaly-page [data-slot="tabs-list"] {
-          background: rgba(255, 255, 255, 0.04) !important;
-          border: 1px solid rgba(255, 255, 255, 0.08) !important;
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-        }
-        .anomaly-page [data-slot="tabs-trigger"][data-state="active"] {
-          box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.3),
-            0 0 35px rgba(34, 211, 238, 0.06) inset;
-        }
-        .anomaly-page [data-slot="button"] {
-          transition: transform 200ms ease, box-shadow 200ms ease;
-          border-color: rgba(255, 255, 255, 0.12);
-        }
-        .anomaly-page [data-slot="button"]:hover {
-          box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.18),
-            0 6px 18px rgba(34, 211, 238, 0.12);
-          transform: translateY(-1px);
-        }
-        .anomaly-page [data-slot="progress"] {
-          background: rgba(255, 255, 255, 0.08) !important;
-        }
-        .anomaly-page [data-slot="progress-indicator"] {
-          background: linear-gradient(
-            90deg,
-            var(--accent) 0%,
-            var(--accent-2) 100%
-          ) !important;
-        }
-        .anomaly-page .anomaly-header {
-          background: rgba(255, 255, 255, 0.03);
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        }
-        .anomaly-page .ambient {
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-        }
-        .anomaly-page .ambient::before,
-        .anomaly-page .ambient::after {
-          content: "";
-          position: absolute;
-          border-radius: 50%;
-          filter: blur(60px);
-          opacity: 0.6;
-        }
-        .anomaly-page .ambient::before {
-          width: 50vw;
-          height: 50vh;
-          left: -10vw;
-          top: -10vh;
-          background: radial-gradient(
-            closest-side,
-            rgba(34, 211, 238, 0.18),
-            transparent 60%
-          );
-        }
-        .anomaly-page .ambient::after {
-          width: 45vw;
-          height: 45vh;
-          right: -10vw;
-          top: 0;
-          background: radial-gradient(
-            closest-side,
-            rgba(139, 92, 246, 0.14),
-            transparent 60%
-          );
-        }
-        .anomaly-page .noise {
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          opacity: 0.04;
-          mix-blend-mode: soft-light;
-          background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140" viewBox="0 0 140 140"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.4"/></svg>');
-          background-size: 300px 300px;
-        }
-        /* Charts aesthetic in dark glass */
-        .anomaly-page .recharts-cartesian-grid line {
-          stroke: rgba(255, 255, 255, 0.08);
-        }
-        .anomaly-page .recharts-text {
-          fill: rgba(255, 255, 255, 0.7);
-        }
-        .anomaly-page .recharts-legend-item-text {
-          color: rgba(255, 255, 255, 0.7) !important;
-        }
-      `}</style>
+      {/* Page-scoped styling moved to globals.css under the `.anomaly-page` scope */}
     </div>
   );
 }
