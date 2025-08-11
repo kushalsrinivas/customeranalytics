@@ -1,4 +1,3 @@
-"use client";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 import {
@@ -35,6 +34,7 @@ import {
 } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 function Section({
   id,
