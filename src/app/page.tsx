@@ -1,29 +1,54 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { AlertTriangle, TrendingUp, Users, Brain, Target, ChevronRight, Play, Pause } from 'lucide-react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Progress } from "@/components/ui/progress"
-import { Slider } from "@/components/ui/slider"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { CustomerSegmentation } from "@/components/customer-segmentation"
-import { TimeSeriesAnalysis } from "@/components/time-series-analysis"
-import { FeatureImportance } from "@/components/feature-importance"
-import { RootCauseAnalysis } from "@/components/root-cause-analysis"
-import { CustomerComparison } from "@/components/customer-comparison"
-import { RiskScoring } from "@/components/risk-scoring"
+import { useState } from "react";
+import {
+  AlertTriangle,
+  TrendingUp,
+  Users,
+  Brain,
+  Target,
+  ChevronRight,
+  Play,
+  Pause,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import { Slider } from "@/components/ui/slider";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { CustomerSegmentation } from "@/components/customer-segmentation";
+import { TimeSeriesAnalysis } from "@/components/time-series-analysis";
+import { FeatureImportance } from "@/components/feature-importance";
+import { RootCauseAnalysis } from "@/components/root-cause-analysis";
+import { CustomerComparison } from "@/components/customer-comparison";
+import { RiskScoring } from "@/components/risk-scoring";
 // import { WhatIfSimulation } from "@/components/what-if-simulation"
-import { AnomalyHeatmap } from "@/components/anomaly-heatmap"
-import { ForecastCards } from "@/components/forecast-cards"
+import { AnomalyHeatmap } from "@/components/anomaly-heatmap";
+import { ForecastCards } from "@/components/forecast-cards";
 
 export default function AnomalyDetectionDashboard() {
-  const [selectedCustomer, setSelectedCustomer] = useState("CUST_001")
-  const [timeRange, setTimeRange] = useState([30])
-  const [isPlaying, setIsPlaying] = useState(false)
+  const [selectedCustomer, setSelectedCustomer] = useState("CUST_001");
+  const [timeRange, setTimeRange] = useState([30]);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   const anomalousCustomers = [
     {
@@ -36,10 +61,10 @@ export default function AnomalyDetectionDashboard() {
       totalSpend: 15420,
       reasonCode: "Sudden bulk purchase + rare product combo",
       actions: ["Flag for manual review", "Offer retention discount"],
-      churnRisk: 0.72
+      churnRisk: 0.72,
     },
     {
-      id: "CUST_002", 
+      id: "CUST_002",
       name: "Michael Chen",
       anomalyScore: 0.76,
       riskLevel: "Medium",
@@ -48,21 +73,21 @@ export default function AnomalyDetectionDashboard() {
       totalSpend: 8930,
       reasonCode: "Location change + payment method switch",
       actions: ["Send fraud alert", "Verify identity"],
-      churnRisk: 0.45
+      churnRisk: 0.45,
     },
     {
       id: "CUST_003",
       name: "Emma Rodriguez",
       anomalyScore: 0.82,
-      riskLevel: "High", 
+      riskLevel: "High",
       segment: "Regular Buyer",
       lastTransaction: "2024-01-13",
       totalSpend: 12100,
       reasonCode: "Product variety drop + spend increase",
       actions: ["Generate investigation report", "Contact customer"],
-      churnRisk: 0.68
-    }
-  ]
+      churnRisk: 0.68,
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -72,7 +97,9 @@ export default function AnomalyDetectionDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold">Customer Anomaly Detection</h1>
-              <p className="text-muted-foreground">Advanced Analytics & Prescriptive Insights</p>
+              <p className="text-muted-foreground">
+                Advanced Analytics & Prescriptive Insights
+              </p>
             </div>
             <div className="flex items-center gap-4">
               <Button
@@ -80,10 +107,17 @@ export default function AnomalyDetectionDashboard() {
                 onClick={() => setIsPlaying(!isPlaying)}
                 className="gap-2"
               >
-                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                {isPlaying ? (
+                  <Pause className="h-4 w-4" />
+                ) : (
+                  <Play className="h-4 w-4" />
+                )}
                 {isPlaying ? "Pause" : "Live"} Monitoring
               </Button>
-              <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
+              <Select
+                value={selectedCustomer}
+                onValueChange={setSelectedCustomer}
+              >
                 <SelectTrigger className="w-48">
                   <SelectValue />
                 </SelectTrigger>
@@ -105,29 +139,39 @@ export default function AnomalyDetectionDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Anomalies</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Active Anomalies
+              </CardTitle>
               <AlertTriangle className="h-4 w-4 text-destructive" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">247</div>
-              <p className="text-xs text-muted-foreground">+12% from last week</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Customer Segments</CardTitle>
-              <Users className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">8</div>
-              <p className="text-xs text-muted-foreground">Behavioral clusters identified</p>
+              <p className="text-xs text-muted-foreground">
+                +12% from last week
+              </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg Risk Score</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Customer Segments
+              </CardTitle>
+              <Users className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">8</div>
+              <p className="text-xs text-muted-foreground">
+                Behavioral clusters identified
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Avg Risk Score
+              </CardTitle>
               <TrendingUp className="h-4 w-4 text-orange-500" />
             </CardHeader>
             <CardContent>
@@ -138,12 +182,16 @@ export default function AnomalyDetectionDashboard() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Churn Prevention</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Churn Prevention
+              </CardTitle>
               <Target className="h-4 w-4 text-green-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">89%</div>
-              <p className="text-xs text-muted-foreground">Success rate this month</p>
+              <p className="text-xs text-muted-foreground">
+                Success rate this month
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -164,14 +212,16 @@ export default function AnomalyDetectionDashboard() {
               <CustomerSegmentation />
               <TimeSeriesAnalysis timeRange={timeRange[0]} />
             </div>
-            
+
             <AnomalyHeatmap />
 
             {/* Customer List with Expandable Details */}
             <Card>
               <CardHeader>
                 <CardTitle>Anomalous Customers</CardTitle>
-                <CardDescription>Customers flagged by the anomaly detection system</CardDescription>
+                <CardDescription>
+                  Customers flagged by the anomaly detection system
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {anomalousCustomers.map((customer) => (
@@ -185,34 +235,58 @@ export default function AnomalyDetectionDashboard() {
                         </CollapsibleTrigger>
                         <div>
                           <div className="font-medium">{customer.name}</div>
-                          <div className="text-sm text-muted-foreground">{customer.id}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {customer.id}
+                          </div>
                         </div>
-                        <Badge variant={customer.riskLevel === "High" ? "destructive" : "secondary"}>
+                        <Badge
+                          variant={
+                            customer.riskLevel === "High"
+                              ? "destructive"
+                              : "secondary"
+                          }
+                        >
                           {customer.riskLevel} Risk
                         </Badge>
                         <Badge variant="outline">{customer.segment}</Badge>
                       </div>
                       <div className="text-right">
-                        <div className="font-medium">Score: {customer.anomalyScore}</div>
-                        <div className="text-sm text-muted-foreground">${customer.totalSpend.toLocaleString()}</div>
+                        <div className="font-medium">
+                          Score: {customer.anomalyScore}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          ${customer.totalSpend.toLocaleString()}
+                        </div>
                       </div>
                     </div>
-                    
+
                     <CollapsibleContent className="px-4 pb-4">
                       <div className="mt-4 space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <h4 className="font-medium mb-2">Why Anomalous?</h4>
-                            <p className="text-sm text-muted-foreground">{customer.reasonCode}</p>
-                            <FeatureImportance features={[]} customerId={customer.id} />
+                            <p className="text-sm text-muted-foreground">
+                              {customer.reasonCode}
+                            </p>
+                            <FeatureImportance
+                              features={[]}
+                              customerId={customer.id}
+                            />
                           </div>
                           <div>
-                            <h4 className="font-medium mb-2">Recommended Actions</h4>
+                            <h4 className="font-medium mb-2">
+                              Recommended Actions
+                            </h4>
                             <div className="space-y-2">
                               {customer.actions.map((action, index) => (
-                                <div key={index} className="flex items-center justify-between">
+                                <div
+                                  key={index}
+                                  className="flex items-center justify-between"
+                                >
                                   <span className="text-sm">{action}</span>
-                                  <Button size="sm" variant="outline">Execute</Button>
+                                  <Button size="sm" variant="outline">
+                                    Execute
+                                  </Button>
                                 </div>
                               ))}
                             </div>
@@ -220,10 +294,17 @@ export default function AnomalyDetectionDashboard() {
                         </div>
                         <div>
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium">Churn Risk</span>
-                            <span className="text-sm">{Math.round(customer.churnRisk * 100)}%</span>
+                            <span className="text-sm font-medium">
+                              Churn Risk
+                            </span>
+                            <span className="text-sm">
+                              {Math.round(customer.churnRisk * 100)}%
+                            </span>
                           </div>
-                          <Progress value={customer.churnRisk * 100} className="h-2" />
+                          <Progress
+                            value={customer.churnRisk * 100}
+                            className="h-2"
+                          />
                         </div>
                       </div>
                     </CollapsibleContent>
@@ -254,7 +335,8 @@ export default function AnomalyDetectionDashboard() {
           {/* Simulation Tab */}
           <TabsContent value="simulation" className="space-y-6">
             <div className="text-sm text-muted-foreground">
-              Use the Anomaly page to run what-if simulations with live database data.
+              Use the Anomaly page to run what-if simulations with live database
+              data.
             </div>
           </TabsContent>
         </Tabs>
@@ -272,7 +354,9 @@ export default function AnomalyDetectionDashboard() {
             <div className="space-y-4">
               <div className="flex items-center gap-4">
                 <span className="text-sm font-medium">Time Range:</span>
-                <span className="text-sm text-muted-foreground">{timeRange[0]} days</span>
+                <span className="text-sm text-muted-foreground">
+                  {timeRange[0]} days
+                </span>
               </div>
               <Slider
                 value={timeRange}
@@ -291,5 +375,5 @@ export default function AnomalyDetectionDashboard() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

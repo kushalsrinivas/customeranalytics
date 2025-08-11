@@ -1,17 +1,29 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { ArrowUp, ArrowDown, Minus } from 'lucide-react'
-import type { CustomerComparisonItem } from "@/types/anomaly"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { ArrowUp, ArrowDown, Minus } from "lucide-react";
+import type { CustomerComparisonItem } from "@/types/anomaly";
 
-export function CustomerComparison({ items = [] }: { items?: CustomerComparisonItem[] }) {
-  const comparisons = items
+export function CustomerComparison({
+  items = [],
+}: {
+  items?: CustomerComparisonItem[];
+}) {
+  const comparisons = items;
   return (
     <Card>
       <CardHeader>
         <CardTitle>Customer vs Peer Comparison</CardTitle>
-        <CardDescription>Behavioral differences from similar customer segment</CardDescription>
+        <CardDescription>
+          Behavioral differences from similar customer segment
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -27,11 +39,17 @@ export function CustomerComparison({ items = [] }: { items?: CustomerComparisonI
                   ) : (
                     <Minus className="h-4 w-4 text-gray-500" />
                   )}
-                  <span className={`text-sm font-medium ${
-                    comp.trend === "up" ? "text-green-600" : 
-                    comp.trend === "down" ? "text-red-600" : "text-gray-600"
-                  }`}>
-                    {comp.difference > 0 ? "+" : ""}{comp.difference.toFixed(1)}%
+                  <span
+                    className={`text-sm font-medium ${
+                      comp.trend === "up"
+                        ? "text-green-600"
+                        : comp.trend === "down"
+                        ? "text-red-600"
+                        : "text-gray-600"
+                    }`}
+                  >
+                    {comp.difference > 0 ? "+" : ""}
+                    {comp.difference.toFixed(1)}%
                   </span>
                 </div>
               </div>
@@ -45,14 +63,16 @@ export function CustomerComparison({ items = [] }: { items?: CustomerComparisonI
                   <div className="font-medium">{comp.peer}</div>
                 </div>
               </div>
-              <Progress 
-                value={Math.abs(comp.difference)} 
-                className={`h-2 ${comp.trend === "up" ? "text-green-500" : "text-red-500"}`}
+              <Progress
+                value={Math.abs(comp.difference)}
+                className={`h-2 ${
+                  comp.trend === "up" ? "text-green-500" : "text-red-500"
+                }`}
               />
             </div>
           ))}
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

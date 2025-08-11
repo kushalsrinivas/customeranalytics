@@ -24,7 +24,13 @@ import { RiskScoring } from "@/components/risk-scoring";
 import { ForecastCards } from "@/components/forecast-cards";
 import { WhatIfSimulation } from "@/components/what-if-simulation";
 import { FeatureImportance } from "@/components/feature-importance";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
 
@@ -120,7 +126,9 @@ export default async function AnomalyPage({
             <Card>
               <CardHeader>
                 <CardTitle>Feature Importance</CardTitle>
-                <CardDescription>Top contributors for {defaultCustomer.customerName}</CardDescription>
+                <CardDescription>
+                  Top contributors for {defaultCustomer.customerName}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <FeatureImportance features={featureImportance} />
@@ -143,12 +151,12 @@ export default async function AnomalyPage({
       <ForecastCards
         overview={forecasts.overview}
         forecasts={forecasts.perCustomer}
-        riskFactors={[
-          { factor: 'Anomaly Score > 0.8', weight: 0.35, impact: 'High' },
-          { factor: 'Declining Transaction Frequency', weight: 0.28, impact: 'High' },
-          { factor: 'Reduced Product Variety', weight: 0.22, impact: 'Medium' },
-          { factor: 'Geographic Inconsistency', weight: 0.15, impact: 'Low' },
-        ]}
+        riskFactors={data.featureContributions.slice(0, 4).map((f) => ({
+          factor: f.featureName,
+          weight: f.importance / 100,
+          impact:
+            f.importance >= 30 ? "High" : f.importance >= 15 ? "Medium" : "Low",
+        }))}
       />
     </div>
   );
