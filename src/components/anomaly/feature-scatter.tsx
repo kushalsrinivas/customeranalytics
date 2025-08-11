@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { AiInsightSheet } from "@/components/ai-insight-sheet";
 import {
   ScatterChart,
   Scatter,
@@ -44,6 +45,8 @@ export function FeatureScatter({
 }) {
   const [xKey, setXKey] = useState<FeatureKey>("anomalyScore");
   const [yKey, setYKey] = useState<FeatureKey>("transactionCount");
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<AnomalyDataPoint | null>(null);
 
   const groupedBySeverity = useMemo(() => {
     const groups: Record<number, any[]> = { 1: [], 2: [], 3: [], 4: [], 5: [] };
@@ -132,7 +135,13 @@ export function FeatureScatter({
                   name={`Severity ${level}`}
                   data={groupedBySeverity[level]}
                   fill={colors[level]}
-                  onClick={(data) => onPointClick?.(data.raw)}
+                  onClick={(data) => {
+                    if (onPointClick) onPointClick(data.raw);
+                    else {
+                      setSelected(data.raw);
+                      setOpen(true);
+                    }
+                  }}
                 />
               ))}
             </ScatterChart>
@@ -157,6 +166,37 @@ export function FeatureScatter({
           </div>
         )}
       </CardContent>
+      {!onPointClick && (
+        <AiInsightSheet
+          open={open}
+          onOpenChange={setOpen}
+          title={selected ? `Customer: ${selected.customerName}` : "Customer"}
+          subtitle={
+            selected
+              ? `X: ${String(
+                  selected[xKey as keyof AnomalyDataPoint]
+                )} • Y: ${String(selected[yKey as keyof AnomalyDataPoint])}`
+              : undefined
+          }
+          context={{
+            type: "scatter",
+            value: selected
+              ? `${String(selected[xKey as keyof AnomalyDataPoint])},${String(
+                  selected[yKey as keyof AnomalyDataPoint]
+                )}`
+              : undefined,
+          }}
+          staticPoints={
+            selected
+              ? [
+                  `Anomaly score: ${selected.anomalyScore.toFixed(3)}`,
+                  `Severity: ${selected.severity}`,
+                  `Transactions: ${selected.transactionCount.toLocaleString()}`,
+                ]
+              : undefined
+          }
+        />
+      )}
     </Card>
   );
 }

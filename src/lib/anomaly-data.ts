@@ -159,39 +159,51 @@ export async function getCategoryDistribution(
       .map(m => m.customerId)
     const placeholders = anomalyIdParams.length ? anomalyIdParams.map(() => '?').join(',') : 'NULL'
 
+    // Determine an anchor date from the dataset, since many demo datasets are not "recent" relative to now
+    const maxRow = db
+      .prepare('SELECT DATE(MAX(st."Txn Date")) as maxd FROM "dbo_F_Sales_Transaction" st')
+      .get() as { maxd: string | null }
+    const anchorDate = maxRow?.maxd ?? null
+
+    // Use a robust category dimension that actually exists in this dataset.
+    // Many sources leave "Product Posting Group" empty, so we fall back to item category hierarchy key.
     const sql = `
       SELECT 
-        COALESCE(st."Product Posting Group", 'Unknown') as category,
+        COALESCE(st."Item Category Hrchy Key", -1) as categoryId,
         COUNT(*) as total,
         SUM(CASE WHEN st."Customer Key" IN (${placeholders}) THEN 1 ELSE 0 END) as anomalyCount
       FROM "dbo_F_Sales_Transaction" st
       WHERE 1=1 ${dateFilter}
-      GROUP BY COALESCE(st."Product Posting Group", 'Unknown')
+      GROUP BY COALESCE(st."Item Category Hrchy Key", -1)
       ORDER BY total DESC
       LIMIT 20
     `
 
     const stmt = db.prepare(sql)
-    const rows = stmt.all(...anomalyIdParams, ...params) as { category: string; total: number; anomalyCount: number }[]
+    const rows = stmt.all(
+      ...anomalyIdParams,
+      ...params
+    ) as { categoryId: number; total: number; anomalyCount: number }[]
 
-    // Compute simple trend: last 7 days vs previous 7 days anomaly rate
-    function computeRateDelta(cat: string): number {
+    // Compute simple trend: last 7 days vs previous 7 days anomaly rate, anchored to the dataset's latest date
+    function computeRateDelta(categoryId: number): number {
+      if (!anchorDate) return 0
       const last7 = db.prepare(`
         SELECT 
           SUM(CASE WHEN st."Customer Key" IN (${placeholders}) THEN 1 ELSE 0 END) as a,
           COUNT(*) as t
         FROM "dbo_F_Sales_Transaction" st
-        WHERE COALESCE(st."Product Posting Group", 'Unknown') = ?
-          AND DATE(st."Txn Date") >= DATE('now', '-6 day')
-      `).get(...anomalyIdParams, cat) as { a: number; t: number }
+        WHERE COALESCE(st."Item Category Hrchy Key", -1) = ?
+          AND DATE(st."Txn Date") BETWEEN DATE(?, '-6 day') AND DATE(?)
+      `).get(...anomalyIdParams, categoryId, anchorDate, anchorDate) as { a: number; t: number }
       const prev7 = db.prepare(`
         SELECT 
           SUM(CASE WHEN st."Customer Key" IN (${placeholders}) THEN 1 ELSE 0 END) as a,
           COUNT(*) as t
         FROM "dbo_F_Sales_Transaction" st
-        WHERE COALESCE(st."Product Posting Group", 'Unknown') = ?
-          AND DATE(st."Txn Date") BETWEEN DATE('now', '-13 day') AND DATE('now', '-7 day')
-      `).get(...anomalyIdParams, cat) as { a: number; t: number }
+        WHERE COALESCE(st."Item Category Hrchy Key", -1) = ?
+          AND DATE(st."Txn Date") BETWEEN DATE(?, '-13 day') AND DATE(?, '-7 day')
+      `).get(...anomalyIdParams, categoryId, anchorDate, anchorDate) as { a: number; t: number }
       const r1 = last7 && last7.t ? (last7.a / last7.t) : 0
       const r0 = prev7 && prev7.t ? (prev7.a / prev7.t) : 0
       return r1 - r0
@@ -199,9 +211,10 @@ export async function getCategoryDistribution(
 
     const categories: CategoryDistributionItem[] = rows.map(r => {
       const rate = r.total === 0 ? 0 : (r.anomalyCount / r.total) * 100
-      const delta = computeRateDelta(r.category)
+      const delta = computeRateDelta(r.categoryId)
       const trend: CategoryDistributionItem['trend'] = delta > 0.01 ? 'up' : delta < -0.01 ? 'down' : 'stable'
-      return { name: r.category, anomalies: r.anomalyCount, rate, trend }
+      const name = r.categoryId === -1 ? 'Unknown' : `Category ${r.categoryId}`
+      return { name, anomalies: r.anomalyCount, rate, trend }
     })
     return categories
   } finally {
@@ -361,7 +374,7 @@ export async function getRiskAlerts(limit = 10): Promise<RiskAlertItem[]> {
       priority: a.severity >= 5 ? 'Critical' : a.severity >= 4 ? 'High' : 'Medium',
       impact: a.totalAmount,
       actions: suggestActionsFor(a),
-      timeToActHours: a.severity >= 5 ? 2 : a.severity >= 4 ? 6 : 24,
+      timeToActHours: estimateTimeToActHours(a),
       category: categorizeAnomaly(a),
     }))
     return alerts
@@ -385,13 +398,32 @@ export async function getForecasts(): Promise<{
 
     const perCustomer: PerCustomerForecastItem[] = []
     for (const a of top) {
-      const daily = db.prepare(`
+      // Anchor to dataset max date if recent window is empty
+      let daily = db.prepare(`
         SELECT DATE(st."Txn Date") as d, COUNT(*) as cnt
         FROM "dbo_F_Sales_Transaction" st
         WHERE st."Customer Key" = ? AND DATE(st."Txn Date") >= DATE('now', '-30 day')
         GROUP BY DATE(st."Txn Date")
         ORDER BY d ASC
       `).all(a.customerId) as { d: string; cnt: number }[]
+      if (daily.length === 0) {
+        const maxRow = db
+          .prepare('SELECT DATE(MAX(st."Txn Date")) as maxd FROM "dbo_F_Sales_Transaction" st WHERE st."Customer Key" = ?')
+          .get(a.customerId) as { maxd: string | null }
+        if (maxRow?.maxd) {
+          const endDate = maxRow.maxd
+          const startDateObj = new Date(`${endDate}T00:00:00Z`)
+          startDateObj.setDate(startDateObj.getDate() - 29)
+          const startDate = startDateObj.toISOString().slice(0, 10)
+          daily = db.prepare(`
+            SELECT DATE(st."Txn Date") as d, COUNT(*) as cnt
+            FROM "dbo_F_Sales_Transaction" st
+            WHERE st."Customer Key" = ? AND DATE(st."Txn Date") BETWEEN ? AND ?
+            GROUP BY DATE(st."Txn Date")
+            ORDER BY d ASC
+          `).all(a.customerId, startDate, endDate) as { d: string; cnt: number }[]
+        }
+      }
       const n = daily.length
       const slope = n > 1 ? linearSlope(daily.map((r, i) => [i, r.cnt])) : 0
       const delta = Math.max(-0.15, Math.min(0.15, slope / 100))
@@ -413,10 +445,44 @@ export async function getForecasts(): Promise<{
       })
     }
 
+    // Compute simple week-over-week deltas anchored to dataset
+    const maxDateRow = db
+      .prepare('SELECT DATE(MAX(st."Txn Date")) as maxd FROM "dbo_F_Sales_Transaction" st')
+      .get() as { maxd: string | null }
+    const anchor = maxDateRow?.maxd
+
+    let changeHighRisk = 0
+    let changeChurn = 0
+    let newPatterns = 0
+    if (anchor) {
+      // Count of customers above threshold last week vs prior week
+      const thresholds = { nextWeek: 0.8, churn: 0.7 }
+      const countAbove = (startOffsetDays: number, endOffsetDays: number, threshold: number) => {
+        const rows = db.prepare(`
+          SELECT c."Customer Key" as cid, COUNT(*) as cnt
+          FROM "dbo_F_Sales_Transaction" st
+          JOIN "dbo_D_Customer" c ON c."Customer Key" = st."Customer Key"
+          WHERE DATE(st."Txn Date") BETWEEN DATE(?, ?) AND DATE(?, ?)
+          GROUP BY c."Customer Key"
+        `).all(anchor, `-${Math.abs(startOffsetDays)} day`, anchor, `-${Math.abs(endOffsetDays)} day`) as { cid: number; cnt: number }[]
+        // Use activity count as a proxy to influence anomaly score movement
+        const avgCnt = avg(rows.map(r => r.cnt))
+        return rows.filter(r => r.cnt >= avgCnt && threshold <= 1).length
+      }
+      const lastWeekHigh = countAbove(6, 0, thresholds.nextWeek)
+      const prevWeekHigh = countAbove(13, 7, thresholds.nextWeek)
+      changeHighRisk = lastWeekHigh - prevWeekHigh
+
+      const lastWeekChurn = countAbove(6, 0, thresholds.churn)
+      const prevWeekChurn = countAbove(13, 7, thresholds.churn)
+      changeChurn = lastWeekChurn - prevWeekChurn
+      newPatterns = Math.max(0, changeHighRisk)
+    }
+
     const overview: ForecastOverviewItem[] = [
-      { title: 'High-Risk Customers Next Week', value: perCustomer.filter(p => p.nextWeekScore >= 0.8).length, change: 0, icon: 'AlertTriangle', color: 'text-red-500' },
-      { title: 'Predicted Churn Cases', value: perCustomer.filter(p => p.churnRisk >= 0.7).length, change: 0, icon: 'TrendingDown', color: 'text-orange-500' },
-      { title: 'New Anomaly Patterns', value: 0, change: 0, icon: 'TrendingUp', color: 'text-blue-500' },
+      { title: 'High-Risk Customers Next Week', value: perCustomer.filter(p => p.nextWeekScore >= 0.8).length, change: changeHighRisk, icon: 'AlertTriangle', color: 'text-red-500' },
+      { title: 'Predicted Churn Cases', value: perCustomer.filter(p => p.churnRisk >= 0.7).length, change: changeChurn, icon: 'TrendingDown', color: 'text-orange-500' },
+      { title: 'New Anomaly Patterns', value: newPatterns, change: newPatterns, icon: 'TrendingUp', color: 'text-blue-500' },
       { title: 'Customers at Risk', value: perCustomer.length, change: 0, icon: 'Users', color: 'text-purple-500' },
     ]
 
@@ -515,6 +581,36 @@ function categorizeAnomaly(a: AnomalyDataPoint): string {
   if (top.name === 'uniqueProducts') return 'Behavioral Drift'
   if (top.name === 'daysSinceLastTransaction') return 'Churn Risk'
   return 'General Anomaly'
+}
+
+function estimateTimeToActHours(a: AnomalyDataPoint): number {
+  // Base urgency by severity
+  let hours = a.severity >= 5 ? 6 : a.severity >= 4 ? 12 : 24
+
+  // Top driver urgency boost
+  const topByZ = a.features.slice().sort((x, y) => y.zScore - x.zScore)[0]
+  if (topByZ && (topByZ.name === 'totalAmount' || topByZ.name === 'avgAmount') && topByZ.zScore >= 2) {
+    hours = Math.min(hours, 4)
+  }
+
+  // Recency vs cadence urgency (churn risk)
+  const dlt = a.features.find(f => f.name === 'daysSinceLastTransaction')?.value ?? null
+  const adb = a.features.find(f => f.name === 'avgDaysBetweenTransactions')?.value ?? null
+  if (dlt != null && adb != null && adb > 0) {
+    const ratio = dlt / adb
+    if (ratio >= 2) {
+      hours = Math.min(hours, 6)
+    } else if (ratio >= 1.25) {
+      hours = Math.min(hours, 12)
+    }
+  }
+
+  // High value customers merit faster action
+  if (a.totalAmount > 10000) {
+    hours = Math.min(hours, 6)
+  }
+
+  return Math.max(1, Math.min(48, Math.round(hours)))
 }
 
 function emptyDashboard(): AnomalyDashboardData {

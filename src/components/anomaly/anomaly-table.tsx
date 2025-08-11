@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { AiInsightSheet } from "@/components/ai-insight-sheet";
 
 export function AnomalyTable({
   anomalies,
@@ -22,6 +23,8 @@ export function AnomalyTable({
   const [sortField, setSortField] =
     useState<keyof AnomalyDataPoint>("anomalyScore");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<AnomalyDataPoint | null>(null);
 
   const sorted = useMemo(() => {
     const copy = [...anomalies];
@@ -83,8 +86,18 @@ export function AnomalyTable({
               {sorted.map((a, index) => (
                 <tr
                   key={a.customerId}
-                  className={index % 2 === 0 ? "bg-muted/20" : ""}
-                  onClick={() => onCustomerClick?.(a)}
+                  className={
+                    (index % 2 === 0 ? "bg-muted/20 " : "") +
+                    "cursor-pointer hover:bg-muted/40"
+                  }
+                  onClick={() => {
+                    if (onCustomerClick) onCustomerClick(a);
+                    else {
+                      setSelected(a);
+                      setOpen(true);
+                    }
+                  }}
+                  data-customer-id={a.customerId}
                 >
                   <td className="px-3 py-2">
                     <div className="font-medium">{a.customerName}</div>
@@ -147,6 +160,36 @@ export function AnomalyTable({
           </table>
         </div>
       </CardContent>
+      {!onCustomerClick && (
+        <AiInsightSheet
+          open={open}
+          onOpenChange={setOpen}
+          title={selected ? `Customer: ${selected.customerName}` : "Customer"}
+          subtitle={
+            selected
+              ? `Region ${selected.region} • Severity ${selected.severity}`
+              : undefined
+          }
+          context={{
+            type: "customer",
+            value: selected?.anomalyScore?.toFixed?.(3),
+          }}
+          staticPoints={
+            selected
+              ? [
+                  `Anomaly score: ${selected.anomalyScore.toFixed(3)}`,
+                  `Total amount: $${selected.totalAmount.toLocaleString()}`,
+                  `Top features: ${selected.features
+                    .slice()
+                    .sort((a, b) => b.contribution - a.contribution)
+                    .slice(0, 3)
+                    .map((f) => f.name)
+                    .join(", ")}`,
+                ]
+              : undefined
+          }
+        />
+      )}
     </Card>
   );
 }

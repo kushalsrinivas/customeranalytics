@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -10,6 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, TrendingDown, TrendingUp } from "lucide-react";
 import type { AnomalousFeature } from "@/types/anomaly";
+import { AiInsightSheet } from "@/components/ai-insight-sheet";
 
 export function RootCauseAnalysis({
   features,
@@ -35,6 +37,13 @@ export function RootCauseAnalysis({
     riskScore: Math.min(0.99, f.contribution / 100 + f.severity / 10),
   }));
 
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<{
+    type: "cause" | "pattern";
+    label: string;
+    value: string;
+  } | null>(null);
+
   return (
     <Card>
       <CardHeader>
@@ -51,7 +60,18 @@ export function RootCauseAnalysis({
           <h4 className="font-medium mb-3">Primary Causes</h4>
           <div className="space-y-3">
             {rootCauses.map((cause, index) => (
-              <div key={index} className="p-3 border rounded-lg">
+              <div
+                key={index}
+                className="p-3 border rounded-lg cursor-pointer hover:bg-muted/30"
+                onClick={() => {
+                  setSelected({
+                    type: "cause",
+                    label: cause.category,
+                    value: `${Math.round(cause.confidence * 100)}% confidence`,
+                  });
+                  setOpen(true);
+                }}
+              >
                 <div className="flex items-center justify-between mb-2">
                   <div className="font-medium">{cause.category}</div>
                   <div className="flex items-center gap-2">
@@ -86,7 +106,15 @@ export function RootCauseAnalysis({
             {patterns.map((pattern, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between p-2 border rounded"
+                className="flex items-center justify-between p-2 border rounded cursor-pointer hover:bg-muted/30"
+                onClick={() => {
+                  setSelected({
+                    type: "pattern",
+                    label: pattern.pattern,
+                    value: `Risk ${pattern.riskScore.toFixed(2)}`,
+                  });
+                  setOpen(true);
+                }}
               >
                 <div>
                   <div className="font-medium text-sm">{pattern.pattern}</div>
@@ -108,6 +136,22 @@ export function RootCauseAnalysis({
             ))}
           </div>
         </div>
+        <AiInsightSheet
+          open={open}
+          onOpenChange={setOpen}
+          title={selected ? `Driver: ${selected.label}` : "Driver"}
+          subtitle={selected?.value}
+          context={{ type: selected?.type ?? "driver", value: selected?.value }}
+          staticPoints={
+            selected
+              ? [
+                  `Selected: ${selected.label}`,
+                  `Metric: ${selected.value}`,
+                  "Observation: placeholder driver observation",
+                ]
+              : undefined
+          }
+        />
       </CardContent>
     </Card>
   );

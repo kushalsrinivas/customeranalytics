@@ -42,7 +42,7 @@ import { RootCauseAnalysis } from "@/components/root-cause-analysis";
 import { CustomerComparison } from "@/components/customer-comparison";
 import { RiskScoring } from "@/components/risk-scoring";
 // import { WhatIfSimulation } from "@/components/what-if-simulation"
-import { AnomalyHeatmap } from "@/components/anomaly-heatmap";
+
 import { ForecastCards } from "@/components/forecast-cards";
 
 export default function AnomalyDetectionDashboard() {
@@ -212,8 +212,6 @@ export default function AnomalyDetectionDashboard() {
               <CustomerSegmentation />
               <TimeSeriesAnalysis timeRange={timeRange[0]} />
             </div>
-
-            <AnomalyHeatmap />
 
             {/* Customer List with Expandable Details */}
             <Card>

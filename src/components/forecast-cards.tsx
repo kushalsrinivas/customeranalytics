@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -14,6 +15,7 @@ import type {
   ForecastOverviewItem,
   PerCustomerForecastItem,
 } from "@/types/anomaly";
+import { AiInsightSheet } from "@/components/ai-insight-sheet";
 
 export function ForecastCards({
   overview = [],
@@ -29,6 +31,12 @@ export function ForecastCards({
   }[];
 }) {
   const iconMap = { AlertTriangle, TrendingDown, TrendingUp, Users } as const;
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<
+    | { kind: "overview"; item: ForecastOverviewItem }
+    | { kind: "forecast"; item: PerCustomerForecastItem }
+    | null
+  >(null);
   return (
     <div className="space-y-6">
       {/* Prediction Overview */}
@@ -36,7 +44,14 @@ export function ForecastCards({
         {overview.map((pred, index) => {
           const Icon = iconMap[pred.icon];
           return (
-            <Card key={index}>
+            <Card
+              key={index}
+              onClick={() => {
+                setSelected({ kind: "overview", item: pred });
+                setOpen(true);
+              }}
+              className="cursor-pointer hover:bg-muted/40"
+            >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
                   {pred.title}
@@ -47,11 +62,18 @@ export function ForecastCards({
                 <div className="text-2xl font-bold">{pred.value}</div>
                 <p
                   className={`text-xs ${
-                    pred.change > 0 ? "text-red-500" : "text-green-500"
+                    pred.change > 0
+                      ? "text-red-500"
+                      : pred.change < 0
+                      ? "text-green-500"
+                      : "text-muted-foreground"
                   }`}
                 >
-                  {pred.change > 0 ? "+" : ""}
-                  {pred.change} from last week
+                  {pred.change === 0
+                    ? "No change vs prior week"
+                    : `${pred.change > 0 ? "+" : ""}${
+                        pred.change
+                      } vs prior week`}
                 </p>
               </CardContent>
             </Card>
@@ -70,7 +92,14 @@ export function ForecastCards({
         <CardContent>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {forecasts.map((forecast, index) => (
-              <div key={index} className="p-4 border rounded-lg space-y-4">
+              <div
+                key={index}
+                className="p-4 border rounded-lg space-y-4 cursor-pointer hover:bg-muted/30"
+                onClick={() => {
+                  setSelected({ kind: "forecast", item: forecast });
+                  setOpen(true);
+                }}
+              >
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium">{forecast.customer}</h4>
                   <Badge
@@ -226,6 +255,46 @@ export function ForecastCards({
           </div>
         </CardContent>
       </Card>
+      <AiInsightSheet
+        open={open}
+        onOpenChange={setOpen}
+        title={
+          selected
+            ? selected.kind === "overview"
+              ? `Forecast KPI: ${selected.item.title}`
+              : `Forecast: ${selected.item.customer}`
+            : "Forecast Insight"
+        }
+        subtitle={
+          selected && selected.kind === "overview"
+            ? selected.item.value
+            : undefined
+        }
+        context={{
+          type: selected?.kind ?? "forecast",
+          value:
+            selected && selected.kind === "overview"
+              ? selected.item.value
+              : selected && selected.kind === "forecast"
+              ? selected.item.nextWeekScore.toFixed(2)
+              : undefined,
+        }}
+        staticPoints={
+          selected
+            ? selected.kind === "overview"
+              ? [
+                  `Value: ${selected.item.value}`,
+                  `Change vs prior: ${selected.item.change}`,
+                  "Observation: placeholder forecast KPI observation",
+                ]
+              : [
+                  `Current: ${selected.item.currentScore.toFixed(2)}`,
+                  `Next week: ${selected.item.nextWeekScore.toFixed(2)}`,
+                  `Next month: ${selected.item.nextMonthScore.toFixed(2)}`,
+                ]
+            : undefined
+        }
+      />
     </div>
   );
 }

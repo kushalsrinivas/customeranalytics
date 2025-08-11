@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -12,6 +13,7 @@ import type {
   CategoryDistributionItem,
   RegionDistributionItem,
 } from "@/types/anomaly";
+import { AiInsightSheet } from "@/components/ai-insight-sheet";
 
 export function AnomalyHeatmap({
   regions = [],
@@ -20,6 +22,12 @@ export function AnomalyHeatmap({
   regions?: RegionDistributionItem[];
   categories?: CategoryDistributionItem[];
 }) {
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<
+    | { kind: "region"; item: RegionDistributionItem }
+    | { kind: "category"; item: CategoryDistributionItem }
+    | null
+  >(null);
   return (
     <Card>
       <CardHeader>
@@ -35,7 +43,14 @@ export function AnomalyHeatmap({
             <h4 className="font-medium mb-4">Regional Distribution</h4>
             <div className="space-y-3">
               {regions.map((region, index) => (
-                <div key={index} className="flex items-center justify-between">
+                <div
+                  key={index}
+                  className="flex items-center justify-between cursor-pointer hover:bg-muted/30 px-2 py-1 rounded"
+                  onClick={() => {
+                    setSelected({ kind: "region", item: region });
+                    setOpen(true);
+                  }}
+                >
                   <div className="flex items-center gap-3">
                     <div
                       className="w-4 h-4 rounded"
@@ -66,7 +81,14 @@ export function AnomalyHeatmap({
             <h4 className="font-medium mb-4">Product Categories</h4>
             <div className="space-y-3">
               {categories.map((category, index) => (
-                <div key={index} className="flex items-center justify-between">
+                <div
+                  key={index}
+                  className="flex items-center justify-between cursor-pointer hover:bg-muted/30 px-2 py-1 rounded"
+                  onClick={() => {
+                    setSelected({ kind: "category", item: category });
+                    setOpen(true);
+                  }}
+                >
                   <div className="flex items-center gap-3">
                     <div
                       className="w-4 h-4 rounded"
@@ -106,6 +128,55 @@ export function AnomalyHeatmap({
           </div>
         </div>
       </CardContent>
+      <AiInsightSheet
+        open={open}
+        onOpenChange={setOpen}
+        title={
+          selected
+            ? selected.kind === "region"
+              ? `Region: ${selected.item.name}`
+              : `Category: ${selected.item.name}`
+            : "Insight"
+        }
+        subtitle={
+          selected
+            ? selected.kind === "region"
+              ? `${
+                  selected.item.anomalies
+                } anomalies • ${selected.item.rate.toFixed(1)}%`
+              : `${
+                  selected.item.anomalies
+                } anomalies • ${selected.item.rate.toFixed(1)}% • Trend ${
+                  selected.item.trend
+                }`
+            : undefined
+        }
+        context={{
+          type: selected?.kind ?? "heatmap",
+          value: selected
+            ? String(
+                selected.kind === "region"
+                  ? selected.item.rate.toFixed(1)
+                  : selected.item.rate.toFixed(1)
+              )
+            : undefined,
+        }}
+        staticPoints={
+          selected
+            ? selected.kind === "region"
+              ? [
+                  `Anomaly rate: ${selected.item.rate.toFixed(1)}%`,
+                  `Anomalies: ${selected.item.anomalies}`,
+                  "Observation: placeholder regional insight",
+                ]
+              : [
+                  `Anomaly rate: ${selected.item.rate.toFixed(1)}%`,
+                  `Anomalies: ${selected.item.anomalies}`,
+                  `Trend: ${selected.item.trend}`,
+                ]
+            : undefined
+        }
+      />
     </Card>
   );
 }

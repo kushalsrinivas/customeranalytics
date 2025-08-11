@@ -16,7 +16,7 @@ import { KpiTiles } from "@/components/anomaly/kpi-tiles";
 import { SeverityDistribution } from "@/components/anomaly/severity-distribution";
 import { FeatureScatter } from "@/components/anomaly/feature-scatter";
 import { AnomalyTable } from "@/components/anomaly/anomaly-table";
-import { AnomalyHeatmap } from "@/components/anomaly-heatmap";
+
 import { CustomerSegmentation } from "@/components/customer-segmentation";
 import { TimeSeriesAnalysis } from "@/components/time-series-analysis";
 import { RootCauseAnalysis } from "@/components/root-cause-analysis";
@@ -129,7 +129,7 @@ export default async function AnomalyPage({
       : "stable";
 
   return (
-    <div className="anomaly-page dark relative min-h-screen overflow-hidden bg-[oklch(0.145_0_0)]">
+    <div className="anomaly-page  dark relative min-h-screen bg-[oklch(0.145_0_0)]">
       {/* Ambient background layers */}
       <div className="ambient" />
       <div className="noise" />
@@ -139,7 +139,7 @@ export default async function AnomalyPage({
         <div className="container mx-auto px-6 py-5">
           <div className="flex items-end justify-between">
             <div>
-              <h1 className="text-3xl font-semibold text-whitetracking-tight">
+              <h1 className="text-3xl font-semibold text-white tracking-tight">
                 Anomaly Detection
               </h1>
               <p className="text-sm text-white">
@@ -168,9 +168,9 @@ export default async function AnomalyPage({
         `}
       >
         {/* Layout: sticky narrative nav + main story */}
-        <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-8">
+        <div className="grid grid-cols-1  lg:grid-cols-[220px_1fr] gap-8">
           {/* Narrative navigator */}
-          <aside className="hidden lg:block">
+          <aside className="hidden pt-10 lg:block">
             <Card className="sticky top-24">
               <CardHeader>
                 <CardTitle className="text-base">Story Navigator</CardTitle>
@@ -278,14 +278,6 @@ export default async function AnomalyPage({
                 <TimeSeriesAnalysis timeRange={30} data={tsData} />
                 <CustomerSegmentation segments={segmentSummary} />
               </div>
-            </Section>
-
-            <Section
-              id="distribution"
-              title="Where are anomalies concentrated?"
-              description="Geographic and product category concentration"
-            >
-              <AnomalyHeatmap regions={regionDist} categories={categoryDist} />
             </Section>
 
             <Section

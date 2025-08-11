@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { SeverityDistributionItem } from "@/types/anomaly";
 import {
   Card,
@@ -8,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { AiInsightSheet } from "@/components/ai-insight-sheet";
 
 export function SeverityDistribution({
   data,
@@ -32,6 +34,11 @@ export function SeverityDistribution({
   const maxCount = Math.max(...data.map((d) => d.count));
   const total = data.reduce((s, d) => s + d.count, 0);
 
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<SeverityDistributionItem | null>(
+    null
+  );
+
   return (
     <Card>
       <CardHeader>
@@ -48,7 +55,11 @@ export function SeverityDistribution({
               return (
                 <button
                   key={s.level}
-                  onClick={() => onLevelClick?.(s.level)}
+                  onClick={() => {
+                    onLevelClick?.(s.level);
+                    setSelected(s);
+                    setOpen(true);
+                  }}
                   className="relative h-12 rounded-md border transition-all focus:outline-none"
                   style={{
                     width: `${Math.max(widthPct, 10)}%`,
@@ -70,6 +81,29 @@ export function SeverityDistribution({
             })}
         </div>
       </CardContent>
+      <AiInsightSheet
+        open={open}
+        onOpenChange={setOpen}
+        title={selected ? `Severity Level ${selected.level}` : "Severity"}
+        subtitle={
+          selected
+            ? `${selected.count} anomalies • ${selected.percentage.toFixed(1)}%`
+            : undefined
+        }
+        context={{
+          type: "severity",
+          value: selected?.percentage?.toFixed?.(1),
+        }}
+        staticPoints={
+          selected
+            ? [
+                `Count: ${selected.count.toLocaleString()}`,
+                `Share: ${selected.percentage.toFixed(1)}% of total`,
+                "Observation: placeholder severity observation",
+              ]
+            : undefined
+        }
+      />
     </Card>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -12,8 +13,11 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { AlertTriangle, CheckCircle, Clock, Zap } from "lucide-react";
 import type { RiskAlertItem } from "@/types/anomaly";
+import { AiInsightSheet } from "@/components/ai-insight-sheet";
 
 export function RiskScoring({ alerts = [] }: { alerts?: RiskAlertItem[] }) {
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<RiskAlertItem | null>(null);
   const playbooks = [
     {
       scenario: "High-Value Customer Anomaly",
@@ -51,7 +55,14 @@ export function RiskScoring({ alerts = [] }: { alerts?: RiskAlertItem[] }) {
         <CardContent>
           <div className="space-y-4">
             {alerts.map((alert) => (
-              <div key={alert.id} className="p-4 border rounded-lg">
+              <div
+                key={alert.id}
+                className="p-4 border rounded-lg cursor-pointer hover:bg-muted/30"
+                onClick={() => {
+                  setSelected(alert);
+                  setOpen(true);
+                }}
+              >
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <Badge
@@ -110,19 +121,23 @@ export function RiskScoring({ alerts = [] }: { alerts?: RiskAlertItem[] }) {
 
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">Time to Act</span>
+                      <span className="text-sm font-medium">
+                        Recommended Action Window
+                      </span>
                       <span className="text-sm text-muted-foreground">
-                        {alert.timeToActHours} hours
+                        {alert.timeToActHours} hrs
                       </span>
                     </div>
                     <Progress
-                      value={
-                        alert.timeToActHours <= 2
-                          ? 90
-                          : alert.timeToActHours <= 6
-                          ? 70
-                          : 30
-                      }
+                      value={Math.max(
+                        5,
+                        Math.min(
+                          100,
+                          Math.round(
+                            (1 / Math.max(1, alert.timeToActHours)) * 100
+                          )
+                        )
+                      )}
                       className="h-2"
                     />
                   </div>
@@ -132,6 +147,28 @@ export function RiskScoring({ alerts = [] }: { alerts?: RiskAlertItem[] }) {
           </div>
         </CardContent>
       </Card>
+      <AiInsightSheet
+        open={open}
+        onOpenChange={setOpen}
+        title={selected ? `Alert: ${selected.customer}` : "Alert"}
+        subtitle={
+          selected
+            ? `${selected.category} • Risk ${selected.riskScore.toFixed(
+                2
+              )} • Impact $${selected.impact.toLocaleString()}`
+            : undefined
+        }
+        context={{ type: "alert", value: selected?.riskScore?.toFixed?.(2) }}
+        staticPoints={
+          selected
+            ? [
+                `Priority: ${selected.priority}`,
+                `Time to act: ${selected.timeToActHours} hrs`,
+                `Top action: ${selected.actions[0]?.action ?? "N/A"}`,
+              ]
+            : undefined
+        }
+      />
 
       {/* Dynamic Playbook Generator */}
       <Card>
