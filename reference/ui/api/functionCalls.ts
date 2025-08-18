@@ -1,239 +1,71 @@
-export interface FunctionDeclaration {
-  name: string;
-  description: string;
-  parameters: {
-    type: string;
-    properties: Record<string, any>;
-    required?: string[];
-  };
-}
+import { FunctionDeclaration } from 'ui-common/utils/api/types';
 
-export const anomalyDetectionFunctions: FunctionDeclaration[] = [
+export const customerBehaviourFunctions: FunctionDeclaration[] = [
   {
-    name: "highlightAnomalousCustomer",
-    description: "Highlight a specific customer in the anomaly detection dashboard by customer ID or name",
+    name: 'highlightCustomer',
+    description: 'Highlight a specific customer on all behaviour visualizations',
     parameters: {
-      type: "object",
+      type: 'object',
       properties: {
-        customerId: {
-          type: "number",
-          description: "The unique customer ID to highlight"
-        },
-        customerName: {
-          type: "string", 
-          description: "The customer name to search for and highlight"
-        },
-        explanation: {
-          type: "string",
-          description: "Explanation of why this customer is being highlighted"
-        }
+        customer_id: { type: 'string', description: 'Customer identifier' },
+        explanation: { type: 'string', description: 'Reason for highlighting' }
       },
-      required: ["explanation"]
+      required: ['customer_id']
     }
   },
   {
-    name: "filterBySeverity",
-    description: "Filter anomalies by severity level(s) to focus on specific risk categories",
+    name: 'filterByCategory',
+    description: 'Filter behaviour visualizations by product category',
     parameters: {
-      type: "object",
+      type: 'object',
       properties: {
-        severityLevels: {
-          type: "array",
-          items: {
-            type: "number",
-            minimum: 1,
-            maximum: 5
-          },
-          description: "Array of severity levels to include (1-5, where 5 is most severe)"
-        },
-        explanation: {
-          type: "string",
-          description: "Explanation of why these severity levels are being filtered"
-        }
+        category: { type: 'string', description: 'Product category' }
       },
-      required: ["severityLevels", "explanation"]
+      required: ['category']
     }
   },
   {
-    name: "filterByRegion",
-    description: "Filter anomalies by geographic region to analyze regional patterns",
+    name: 'filterByChannel',
+    description: 'Filter behaviour visualizations by sales channel',
     parameters: {
-      type: "object",
+      type: 'object',
       properties: {
-        regions: {
-          type: "array",
-          items: {
-            type: "string"
-          },
-          description: "Array of region names to include in the analysis"
-        },
-        explanation: {
-          type: "string",
-          description: "Explanation of why these regions are being analyzed"
-        }
+        channel: { type: 'string', description: 'Sales channel' }
       },
-      required: ["regions", "explanation"]
+      required: ['channel']
     }
   },
   {
-    name: "analyzeFeatureContribution",
-    description: "Focus on specific features that contribute to anomaly detection",
+    name: 'compareChurnRisk',
+    description: 'Compare behaviour metrics across churn risk levels',
     parameters: {
-      type: "object",
+      type: 'object',
       properties: {
-        xAxisFeature: {
-          type: "string",
-          enum: ["anomalyScore", "transactionCount", "totalAmount", "avgAmount", "severity"],
-          description: "Feature to display on the X-axis of the scatter plot"
-        },
-        yAxisFeature: {
-          type: "string", 
-          enum: ["anomalyScore", "transactionCount", "totalAmount", "avgAmount", "severity"],
-          description: "Feature to display on the Y-axis of the scatter plot"
-        },
-        explanation: {
-          type: "string",
-          description: "Explanation of why these features are being compared"
-        }
+        churnRisks: { type: 'array', items: { type: 'string' }, description: 'List of churn risk levels' },
+        label: { type: 'string', description: 'Label for the comparison' }
       },
-      required: ["xAxisFeature", "yAxisFeature", "explanation"]
+      required: ['churnRisks']
     }
   },
   {
-    name: "compareAnomalyScores",
-    description: "Compare anomaly scores between different customer segments or time periods",
+    name: 'explainPattern',
+    description: 'Generate an explanation for a behaviour pattern or metric',
     parameters: {
-      type: "object",
+      type: 'object',
       properties: {
-        segments: {
-          type: "array",
-          items: {
-            type: "string"
-          },
-          description: "Customer segments to compare (e.g., 'Premium', 'Standard', 'Basic')"
-        },
-        scoreThreshold: {
-          type: "number",
-          minimum: 0,
-          maximum: 1,
-          description: "Minimum anomaly score threshold for comparison"
-        },
-        explanation: {
-          type: "string",
-          description: "Explanation of the comparison being performed"
-        }
+        metric: { type: 'string', description: 'Metric or pattern to explain' },
+        customer_id: { type: 'string', description: 'Specific customer to explain', nullable: true }
       },
-      required: ["explanation"]
+      required: ['metric']
     }
   },
   {
-    name: "explainAnomalyPattern",
-    description: "Provide detailed explanation of anomaly patterns and their business implications",
+    name: 'resetBehaviourView',
+    description: 'Reset all filters and highlights on the behaviour dashboard',
     parameters: {
-      type: "object",
-      properties: {
-        patternType: {
-          type: "string",
-          enum: ["severity_distribution", "feature_correlation", "regional_clustering", "temporal_trends"],
-          description: "Type of anomaly pattern to explain"
-        },
-        focusArea: {
-          type: "string",
-          description: "Specific area or aspect to focus the explanation on"
-        },
-        businessContext: {
-          type: "string",
-          description: "Business context for the explanation (e.g., 'fraud detection', 'customer retention')"
-        }
-      },
-      required: ["patternType", "businessContext"]
-    }
-  },
-  {
-    name: "adjustSeverityThreshold",
-    description: "Adjust the severity threshold for anomaly classification",
-    parameters: {
-      type: "object",
-      properties: {
-        thresholdLevel: {
-          type: "number",
-          minimum: 1,
-          maximum: 5,
-          description: "New threshold level for severity classification"
-        },
-        explanation: {
-          type: "string",
-          description: "Explanation of why the threshold is being adjusted"
-        }
-      },
-      required: ["thresholdLevel", "explanation"]
-    }
-  },
-  {
-    name: "sortAnomaliesByMetric",
-    description: "Sort the anomaly table by a specific metric to identify top performers or outliers",
-    parameters: {
-      type: "object",
-      properties: {
-        sortField: {
-          type: "string",
-          enum: ["anomalyScore", "severity", "totalAmount", "transactionCount", "customerName", "region"],
-          description: "Field to sort the anomaly table by"
-        },
-        sortDirection: {
-          type: "string",
-          enum: ["asc", "desc"],
-          description: "Sort direction (ascending or descending)"
-        },
-        explanation: {
-          type: "string",
-          description: "Explanation of why this sorting is being applied"
-        }
-      },
-      required: ["sortField", "sortDirection", "explanation"]
-    }
-  },
-  {
-    name: "showCorrelationMatrix",
-    description: "Display the feature correlation matrix to understand relationships between anomaly features",
-    parameters: {
-      type: "object",
-      properties: {
-        show: {
-          type: "boolean",
-          description: "Whether to show or hide the correlation matrix"
-        },
-        explanation: {
-          type: "string",
-          description: "Explanation of why the correlation matrix is being shown/hidden"
-        }
-      },
-      required: ["show", "explanation"]
-    }
-  },
-  {
-    name: "investigateCustomerAnomaly",
-    description: "Deep dive into a specific customer's anomalous behavior patterns",
-    parameters: {
-      type: "object",
-      properties: {
-        customerId: {
-          type: "number",
-          description: "Customer ID to investigate"
-        },
-        investigationFocus: {
-          type: "string",
-          enum: ["transaction_patterns", "spending_behavior", "frequency_changes", "product_preferences"],
-          description: "Specific aspect of customer behavior to investigate"
-        },
-        explanation: {
-          type: "string",
-          description: "Explanation of the investigation purpose and expected insights"
-        }
-      },
-      required: ["customerId", "investigationFocus", "explanation"]
+      type: 'object',
+      properties: {},
+      required: []
     }
   }
-];
-
-export default anomalyDetectionFunctions; 
+]; 
