@@ -17,6 +17,7 @@ import {
   Radar,
   Legend,
 } from "recharts";
+import { useComponentInsights } from "@/hooks/use-component-insights";
 
 interface PatternRadarChartProps {
   patterns: BehaviorPattern[];
@@ -27,6 +28,77 @@ export function PatternRadarChart({
   patterns,
   selectedCustomer,
 }: PatternRadarChartProps) {
+  const chartInsights = useComponentInsights({
+    componentType: "Radar Chart",
+    componentId: "pattern-radar-chart",
+    data: {
+      patterns: patterns,
+      totalCustomers: patterns?.length || 0,
+      selectedCustomer: selectedCustomer,
+      avgFrequency:
+        patterns?.reduce((sum, p) => sum + p.frequency, 0) /
+        (patterns?.length || 1),
+      avgRecency:
+        patterns?.reduce((sum, p) => sum + p.recency, 0) /
+        (patterns?.length || 1),
+      avgOrderValue:
+        patterns?.reduce((sum, p) => sum + p.avg_order_value, 0) /
+        (patterns?.length || 1),
+    },
+    generateInsights: (data) => {
+      const insights = [];
+      if (data.totalCustomers > 0) {
+        insights.push(
+          `Analyzing behavioral patterns for ${data.totalCustomers} customers`
+        );
+
+        if (data.selectedCustomer) {
+          insights.push(`Focused view: Customer ${data.selectedCustomer}`);
+        } else {
+          insights.push("Showing aggregate customer behavior patterns");
+        }
+
+        // Frequency insights
+        if (data.avgFrequency > 8) {
+          insights.push("High purchase frequency - customers are very engaged");
+        } else if (data.avgFrequency < 3) {
+          insights.push(
+            "Low purchase frequency - consider engagement campaigns"
+          );
+        } else {
+          insights.push("Moderate purchase frequency across customer base");
+        }
+
+        // Recency insights
+        if (data.avgRecency < 30) {
+          insights.push("Recent customer activity - good retention");
+        } else if (data.avgRecency > 90) {
+          insights.push(
+            "Customers haven't purchased recently - re-engagement needed"
+          );
+        }
+
+        // Order value insights
+        if (data.avgOrderValue > 100) {
+          insights.push(
+            `High average order value ($${data.avgOrderValue.toFixed(
+              0
+            )}) - valuable customers`
+          );
+        } else if (data.avgOrderValue < 50) {
+          insights.push("Lower order values - opportunity for upselling");
+        }
+      } else {
+        insights.push("No customer pattern data available");
+      }
+      return insights;
+    },
+    metadata: {
+      title: "Purchase Pattern Analysis",
+      description: "Customer behavior radar chart",
+      value: patterns?.length ? `${patterns.length} customers` : "No data",
+    },
+  });
   // Calculate aggregate metrics for the radar chart
   const avgMetrics = patterns.reduce(
     (acc, pattern) => {
@@ -123,7 +195,10 @@ export function PatternRadarChart({
   ];
 
   return (
-    <Card>
+    <Card
+      className="cursor-pointer hover:shadow-md transition-shadow duration-200"
+      {...chartInsights.getClickProps()}
+    >
       <CardHeader>
         <CardTitle>Purchase Behavior Radar</CardTitle>
         <CardDescription>

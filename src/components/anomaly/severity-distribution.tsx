@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { AiInsightSheet } from "@/components/ai-insight-sheet";
+import { useComponentInsights } from "@/hooks/use-component-insights";
 
 export function SeverityDistribution({
   data,
@@ -39,8 +40,78 @@ export function SeverityDistribution({
     null
   );
 
+  const chartInsights = useComponentInsights({
+    componentType: "Severity Distribution Chart",
+    componentId: "severity-distribution-chart",
+    data: {
+      severityData: data,
+      totalAnomalies: total,
+      maxCount: maxCount,
+      highSeverityCount: data
+        .filter((d) => d.level >= 4)
+        .reduce((sum, d) => sum + d.count, 0),
+      criticalCount: data.find((d) => d.level === 5)?.count || 0,
+    },
+    generateInsights: (data) => {
+      const insights = [];
+      if (data.totalAnomalies > 0) {
+        insights.push(`Total anomalies detected: ${data.totalAnomalies}`);
+
+        const highSeverityPct =
+          (data.highSeverityCount / data.totalAnomalies) * 100;
+        if (highSeverityPct > 30) {
+          insights.push(
+            `HIGH ALERT: ${highSeverityPct.toFixed(
+              1
+            )}% are high-severity (Level 4-5) anomalies`
+          );
+        } else if (highSeverityPct > 15) {
+          insights.push(
+            `${highSeverityPct.toFixed(
+              1
+            )}% are high-severity anomalies - monitor closely`
+          );
+        } else {
+          insights.push(
+            `${highSeverityPct.toFixed(
+              1
+            )}% are high-severity - manageable level`
+          );
+        }
+
+        if (data.criticalCount > 0) {
+          insights.push(
+            `${data.criticalCount} critical (Level 5) anomalies require immediate action`
+          );
+        }
+
+        const dominantLevel = data.severityData.reduce((max, current) =>
+          current.count > max.count ? current : max
+        );
+        insights.push(
+          `Most common severity: Level ${dominantLevel.level} (${dominantLevel.count} cases)`
+        );
+
+        insights.push(
+          "Click on severity levels to drill down into specific cases"
+        );
+      } else {
+        insights.push("No anomalies detected in current time period");
+      }
+      return insights;
+    },
+    metadata: {
+      title: "Anomaly Severity Distribution",
+      description: "Distribution of anomalies by severity level",
+      value: `${total} anomalies`,
+    },
+  });
+
   return (
-    <Card>
+    <Card
+      className="cursor-pointer hover:shadow-md transition-shadow duration-200"
+      {...chartInsights.getClickProps()}
+    >
       <CardHeader>
         <CardTitle>Anomaly Severity Distribution</CardTitle>
         <CardDescription>{total} total anomalies detected</CardDescription>

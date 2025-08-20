@@ -19,12 +19,103 @@ import {
   Tooltip,
   Cell,
 } from "recharts";
+import { useComponentInsights } from "@/hooks/use-component-insights";
 
 interface EngagementMatrixProps {
   engagementData: EngagementData[];
 }
 
 export function EngagementMatrix({ engagementData }: EngagementMatrixProps) {
+  const chartInsights = useComponentInsights({
+    componentType: "Engagement Matrix",
+    componentId: "engagement-matrix",
+    data: {
+      engagementData: engagementData,
+      totalCustomers: engagementData?.length || 0,
+      champions:
+        engagementData?.filter((d) => d.segment === "champions").length || 0,
+      atRisk:
+        engagementData?.filter((d) => d.segment === "at_risk").length || 0,
+      avgEngagement:
+        engagementData?.reduce((sum, d) => sum + d.engagement_score, 0) /
+        (engagementData?.length || 1),
+      avgFrequency:
+        engagementData?.reduce((sum, d) => sum + d.frequency, 0) /
+        (engagementData?.length || 1),
+    },
+    generateInsights: (data) => {
+      const insights = [];
+      if (data.totalCustomers > 0) {
+        insights.push(
+          `Customer engagement analysis for ${data.totalCustomers} customers`
+        );
+
+        const championsPct = (data.champions / data.totalCustomers) * 100;
+        const atRiskPct = (data.atRisk / data.totalCustomers) * 100;
+
+        if (championsPct > 20) {
+          insights.push(
+            `Excellent: ${championsPct.toFixed(
+              1
+            )}% are Champions - high-value customers`
+          );
+        } else if (championsPct > 10) {
+          insights.push(
+            `Good: ${championsPct.toFixed(
+              1
+            )}% are Champions - solid customer base`
+          );
+        } else {
+          insights.push(
+            `Opportunity: Only ${championsPct.toFixed(
+              1
+            )}% are Champions - focus on upgrades`
+          );
+        }
+
+        if (atRiskPct > 25) {
+          insights.push(
+            `ALERT: ${atRiskPct.toFixed(
+              1
+            )}% customers at risk - retention campaigns needed`
+          );
+        } else if (atRiskPct > 15) {
+          insights.push(
+            `Watch: ${atRiskPct.toFixed(
+              1
+            )}% customers at risk - monitor closely`
+          );
+        } else {
+          insights.push(
+            `Stable: ${atRiskPct.toFixed(1)}% at risk - manageable churn level`
+          );
+        }
+
+        insights.push(
+          `Average engagement score: ${data.avgEngagement.toFixed(1)}/100`
+        );
+        insights.push(
+          `Average purchase frequency: ${data.avgFrequency.toFixed(
+            1
+          )} per month`
+        );
+
+        insights.push(
+          "Use this matrix to identify upsell and retention opportunities"
+        );
+      } else {
+        insights.push("No engagement data available for analysis");
+      }
+      return insights;
+    },
+    metadata: {
+      title: "Customer Engagement Matrix",
+      description: "RFM-based customer segmentation",
+      value: engagementData?.length
+        ? `${engagementData.length} customers`
+        : "No data",
+    },
+  });
   const getEngagementColor = (level: string) => {
     switch (level) {
       case "champions":
@@ -93,7 +184,10 @@ export function EngagementMatrix({ engagementData }: EngagementMatrixProps) {
   const totalCustomers = engagementData.length;
 
   return (
-    <Card>
+    <Card
+      className="cursor-pointer hover:shadow-md transition-shadow duration-200"
+      {...chartInsights.getClickProps()}
+    >
       <CardHeader>
         <CardTitle>Customer Engagement Matrix</CardTitle>
         <CardDescription>

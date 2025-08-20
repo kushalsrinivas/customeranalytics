@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ChatSheet from "@/components/chat/chat-sheet";
+import { FloatingBIAgent } from "@/components/floating-bi-agent";
+import { DashboardProvider } from "@/contexts/dashboard-context";
+import { ComponentInsightsPopup } from "@/components/component-insights-popup";
+import { MultiSelectIndicator } from "@/components/multi-select-indicator";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,8 +32,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
-        <ChatSheet />
+        <DashboardProvider>
+          {children}
+          <ChatSheet />
+          <FloatingBIAgent />
+          <ComponentInsightsPopup />
+          <MultiSelectIndicator />
+        </DashboardProvider>
       </body>
     </html>
   );

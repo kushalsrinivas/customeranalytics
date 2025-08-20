@@ -18,6 +18,7 @@ import {
   Tooltip,
   ReferenceLine,
 } from "recharts";
+import { useComponentInsights } from "@/hooks/use-component-insights";
 
 interface PatternIntervalHistogramProps {
   patterns: BehaviorPattern[];
@@ -32,6 +33,95 @@ export function PatternIntervalHistogram({
   title,
   description,
 }: PatternIntervalHistogramProps) {
+  const chartInsights = useComponentInsights({
+    componentType: "Histogram Chart",
+    componentId: `pattern-histogram-${metric}`,
+    data: {
+      patterns: patterns,
+      metric: metric,
+      totalCustomers: patterns?.length || 0,
+      title: title,
+      avgValue:
+        patterns?.reduce((sum, p) => sum + p[metric], 0) /
+        (patterns?.length || 1),
+      minValue: patterns?.length
+        ? Math.min(...patterns.map((p) => p[metric]))
+        : 0,
+      maxValue: patterns?.length
+        ? Math.max(...patterns.map((p) => p[metric]))
+        : 0,
+    },
+    generateInsights: (data) => {
+      const insights = [];
+      if (data.totalCustomers > 0) {
+        insights.push(
+          `Analyzing ${data.metric} distribution for ${data.totalCustomers} customers`
+        );
+
+        if (data.metric === "recency") {
+          if (data.avgValue < 30) {
+            insights.push(
+              "Most customers have purchased recently - good engagement"
+            );
+          } else if (data.avgValue > 90) {
+            insights.push(
+              "Many customers haven't purchased in a while - re-engagement needed"
+            );
+          } else {
+            insights.push(
+              "Mixed recency patterns - some recent, some dormant customers"
+            );
+          }
+          insights.push(
+            `Average days since last purchase: ${data.avgValue.toFixed(0)}`
+          );
+        } else if (data.metric === "frequency") {
+          if (data.avgValue > 5) {
+            insights.push(
+              "High purchase frequency - customers are very engaged"
+            );
+          } else if (data.avgValue < 2) {
+            insights.push(
+              "Low purchase frequency - opportunity for engagement campaigns"
+            );
+          } else {
+            insights.push("Moderate purchase frequency across customer base");
+          }
+          insights.push(
+            `Average purchases per month: ${data.avgValue.toFixed(1)}`
+          );
+        } else if (data.metric === "avg_order_value") {
+          if (data.avgValue > 100) {
+            insights.push("High average order values - valuable customer base");
+          } else if (data.avgValue < 50) {
+            insights.push("Lower order values - opportunity for upselling");
+          } else {
+            insights.push("Moderate order values with potential for growth");
+          }
+          insights.push(`Average order value: $${data.avgValue.toFixed(2)}`);
+        }
+
+        const range = data.maxValue - data.minValue;
+        if (range > data.avgValue * 2) {
+          insights.push(
+            "High variability in customer behavior - consider segmentation"
+          );
+        } else {
+          insights.push("Consistent behavior patterns across customer base");
+        }
+      } else {
+        insights.push("No customer data available for analysis");
+      }
+      return insights;
+    },
+    metadata: {
+      title:
+        title ||
+        `${metric.charAt(0).toUpperCase() + metric.slice(1)} Distribution`,
+      description: description || `Customer ${metric} analysis`,
+      value: patterns?.length ? `${patterns.length} customers` : "No data",
+    },
+  });
   // Validate and filter patterns data
   const validPatterns =
     patterns?.filter(
@@ -164,7 +254,10 @@ export function PatternIntervalHistogram({
   }
 
   return (
-    <Card>
+    <Card
+      className="cursor-pointer hover:shadow-md transition-shadow duration-200"
+      {...chartInsights.getClickProps()}
+    >
       <CardHeader>
         <CardTitle>{getTitle()}</CardTitle>
         <CardDescription>{getDescription()}</CardDescription>

@@ -1,21 +1,12 @@
-import { Suspense } from "react";
+"use client";
+
+import { Suspense, useState, useEffect } from "react";
 import type { ReactNode } from "react";
-import {
-  getAnomalyDashboardData,
-  getRegionDistribution,
-  getCategoryDistribution,
-  getSegmentSummary,
-  getTimeSeriesDaily,
-  getCustomerComparisonData,
-  getCustomerFeatureImportance,
-  getRiskAlerts,
-  getForecasts,
-  getSimulationBaselines,
-} from "@/lib/anomaly-data";
 import { KpiTiles } from "@/components/anomaly/kpi-tiles";
 import { SeverityDistribution } from "@/components/anomaly/severity-distribution";
 import { FeatureScatter } from "@/components/anomaly/feature-scatter";
 import { AnomalyTable } from "@/components/anomaly/anomaly-table";
+import { AnomalyFiltersComponent } from "@/components/anomaly/anomaly-filters";
 
 import { CustomerSegmentation } from "@/components/customer-segmentation";
 import { TimeSeriesAnalysis } from "@/components/time-series-analysis";
@@ -32,6 +23,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { AnomalyFilters, AnomalyDashboardData } from "@/types/anomaly";
+import {
+  getCustomerComparisonData,
+  getCustomerFeatureImportance,
+  getSimulationBaselines,
+} from "@/lib/anomaly-data";
+import { useDashboard } from "@/contexts/dashboard-context";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -60,64 +58,154 @@ function Section({
   );
 }
 
-export default async function AnomalyPage({
-  searchParams,
-}: {
-  searchParams: Record<string, string | string[] | undefined>;
-}) {
-  const params = searchParams;
-
-  const severityLevels = safeJson<number[]>(params["severityLevels"]) ?? [
-    1, 2, 3, 4, 5,
-  ];
-  const regions = safeJson<string[]>(params["regions"]) ?? [];
-  const dateRange = safeJson<{ start: string | null; end: string | null }>(
-    params["dateRange"]
-  ) ?? {
-    start: null,
-    end: null,
-  };
-
-  const data = await getAnomalyDashboardData({
-    severityLevels,
-    regions,
-    dateRange,
+export default function AnomalyPage() {
+  const { setAnomalyData, setLoading: setContextLoading } = useDashboard();
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState<AnomalyFilters>({
+    severityLevels: [1, 2, 3, 4, 5],
+    regions: [],
+    dateRange: undefined,
+    minScore: 0.2,
+  });
+  const [featureImportance, setFeatureImportance] = useState<any[]>([]);
+  const [comparisonItems, setComparisonItems] = useState<any[]>([]);
+  const [simulation, setSimulation] = useState<any>({
+    baseline: [],
+    current: null,
   });
 
-  // Fetch additional data for full dashboard
-  const [regionDist, categoryDist, segmentSummary, tsData, alerts, forecasts] =
-    await Promise.all([
-      getRegionDistribution({ severityLevels, regions, dateRange }),
-      getCategoryDistribution({ severityLevels, regions, dateRange }),
-      getSegmentSummary({ severityLevels, regions, dateRange }),
-      getTimeSeriesDaily(30),
-      getRiskAlerts(10),
-      getForecasts(),
-    ]);
+  // Fetch data when filters change
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setContextLoading(true);
+      try {
+        // Build query parameters
+        const params = new URLSearchParams();
 
-  // Prepare per-customer deep-dive defaults using the top anomaly
-  const defaultCustomer = data.anomalies[0] ?? null;
-  const [featureImportance, comparisonItems, simulation] = defaultCustomer
-    ? await Promise.all([
-        getCustomerFeatureImportance(defaultCustomer.customerId),
-        getCustomerComparisonData(defaultCustomer.customerId),
-        getSimulationBaselines(defaultCustomer.customerId),
-      ])
-    : [[], [], { baseline: [], current: null }];
+        if (filters.severityLevels) {
+          params.append(
+            "severityLevels",
+            JSON.stringify(filters.severityLevels)
+          );
+        }
+        if (filters.regions && filters.regions.length > 0) {
+          params.append("regions", JSON.stringify(filters.regions));
+        }
+        if (filters.dateRange) {
+          params.append("dateRange", JSON.stringify(filters.dateRange));
+        }
+        if (filters.minScore !== undefined) {
+          params.append("minScore", filters.minScore.toString());
+        }
+        if (filters.minSeverity !== undefined) {
+          params.append("minSeverity", filters.minSeverity.toString());
+        }
 
-  // Derive concise narrative insights
-  const topSegment = segmentSummary[0]?.name ?? null;
+        // Fetch main dashboard data
+        const response = await fetch(`/api/anomaly?${params.toString()}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch anomaly data");
+        }
+
+        const dashboardData = await response.json();
+        setData(dashboardData);
+        setAnomalyData(dashboardData); // Share data with context
+
+        // Fetch additional data for the top customer if available
+        const defaultCustomer = dashboardData.anomalies[0] ?? null;
+        if (defaultCustomer) {
+          const [featureImportanceData, comparisonData, simulationData] =
+            await Promise.all([
+              getCustomerFeatureImportance(defaultCustomer.customerId),
+              getCustomerComparisonData(defaultCustomer.customerId),
+              getSimulationBaselines(defaultCustomer.customerId),
+            ]);
+          setFeatureImportance(featureImportanceData);
+          setComparisonItems(comparisonData);
+          setSimulation(simulationData);
+        } else {
+          setFeatureImportance([]);
+          setComparisonItems([]);
+          setSimulation({ baseline: [], current: null });
+        }
+      } catch (error) {
+        console.error("Error fetching anomaly data:", error);
+        // Set fallback empty data
+        setData({
+          anomalies: [],
+          severityDistribution: [],
+          featureContributions: [],
+          kpis: {
+            anomalyRate: 0,
+            anomalyRateTrend: 0,
+            highSeverityCount: 0,
+            topAnomalousFeature: "None",
+            meanAnomalyScore: 0,
+            meanAnomalyScoreTrend: 0,
+            newAnomalies24h: 0,
+          },
+          regionDistribution: [],
+          categoryDistribution: [],
+          segmentSummary: [],
+          timeSeriesData: [],
+          riskAlerts: [],
+          forecasts: { overview: [], perCustomer: [] },
+        });
+      } finally {
+        setLoading(false);
+        setContextLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [filters]);
+
+  const handleFiltersChange = (newFilters: AnomalyFilters) => {
+    setFilters(newFilters);
+  };
+
+  const handleReset = () => {
+    setFilters({
+      severityLevels: [1, 2, 3, 4, 5],
+      regions: [],
+      dateRange: undefined,
+      minScore: 0.2,
+    });
+  };
+
+  if (loading || !data) {
+    return (
+      <div className="min-h-screen bg-[oklch(0.145_0_0)] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-white">Loading anomaly detection data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Derive insights from loaded data
+  const topSegment = data.segmentSummary[0]?.name ?? null;
   const topRegion =
-    regionDist.slice().sort((a, b) => b.rate - a.rate)[0]?.name ?? null;
+    data.regionDistribution.slice().sort((a: any, b: any) => b.rate - a.rate)[0]
+      ?.name ?? null;
   const topCategory =
-    categoryDist.slice().sort((a, b) => b.rate - a.rate)[0]?.name ?? null;
+    data.categoryDistribution
+      .slice()
+      .sort((a: any, b: any) => b.rate - a.rate)[0]?.name ?? null;
   const topDriver = data.kpis.topAnomalousFeature;
+  const defaultCustomer = data.anomalies[0] ?? null;
 
-  // Trend: compare last 7 vs prior 7 by anomalyScore from the daily series
+  // Trend calculation
+  const tsData = data.timeSeriesData || [];
   const last7 = tsData.slice(-7);
   const prev7 = tsData.slice(-14, -7);
   const avg = (arr: typeof tsData) =>
-    arr.length ? arr.reduce((s, v) => s + v.anomalyScore, 0) / arr.length : 0;
+    arr.length
+      ? arr.reduce((s: number, v: any) => s + v.anomalyScore, 0) / arr.length
+      : 0;
   const lastAvg = avg(last7);
   const prevAvg = avg(prev7);
   const trendDelta = lastAvg - prevAvg;
@@ -216,6 +304,14 @@ export default async function AnomalyPage({
 
           {/* Main narrative */}
           <main className="space-y-10">
+            {/* Filters Section */}
+            <div className="mb-8">
+              <AnomalyFiltersComponent
+                filters={filters}
+                onFiltersChange={handleFiltersChange}
+                onReset={handleReset}
+              />
+            </div>
             <Section
               id="overview"
               title="What stands out right now?"
@@ -275,8 +371,11 @@ export default async function AnomalyPage({
               description="Trajectory of aggregate anomaly signal and activity over the last 30 days"
             >
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <TimeSeriesAnalysis timeRange={30} data={tsData} />
-                <CustomerSegmentation segments={segmentSummary} />
+                <TimeSeriesAnalysis
+                  timeRange={30}
+                  data={data.timeSeriesData || []}
+                />
+                <CustomerSegmentation segments={data.segmentSummary || []} />
               </div>
             </Section>
 
@@ -353,7 +452,7 @@ export default async function AnomalyPage({
               title="What should we do now?"
               description="Prioritized alerts and recommended playbooks"
             >
-              <RiskScoring alerts={alerts} />
+              <RiskScoring alerts={data.riskAlerts || []} />
             </Section>
 
             <Section
@@ -362,18 +461,20 @@ export default async function AnomalyPage({
               description="Near-term forecasts and risk outlook"
             >
               <ForecastCards
-                overview={forecasts.overview}
-                forecasts={forecasts.perCustomer}
-                riskFactors={data.featureContributions.slice(0, 4).map((f) => ({
-                  factor: f.featureName,
-                  weight: f.importance / 100,
-                  impact:
-                    f.importance >= 30
-                      ? "High"
-                      : f.importance >= 15
-                      ? "Medium"
-                      : "Low",
-                }))}
+                overview={data.forecasts?.overview || []}
+                forecasts={data.forecasts?.perCustomer || []}
+                riskFactors={(data.featureContributions || [])
+                  .slice(0, 4)
+                  .map((f: any) => ({
+                    factor: f.featureName,
+                    weight: f.importance / 100,
+                    impact:
+                      f.importance >= 30
+                        ? "High"
+                        : f.importance >= 15
+                        ? "Medium"
+                        : "Low",
+                  }))}
               />
             </Section>
           </main>
@@ -383,14 +484,4 @@ export default async function AnomalyPage({
       {/* Page-scoped styling moved to globals.css under the `.anomaly-page` scope */}
     </div>
   );
-}
-
-function safeJson<T>(val: string | string[] | undefined): T | null {
-  if (!val) return null;
-  try {
-    const s = Array.isArray(val) ? val[0] : val;
-    return JSON.parse(s) as T;
-  } catch {
-    return null;
-  }
 }

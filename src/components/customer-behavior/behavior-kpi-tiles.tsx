@@ -12,6 +12,10 @@ import {
   Smartphone,
   AlertTriangle,
 } from "lucide-react";
+import {
+  useComponentInsights,
+  insightGenerators,
+} from "@/hooks/use-component-insights";
 
 interface BehaviorKpiTilesProps {
   kpis: BehaviorKPI;
@@ -77,8 +81,88 @@ export function BehaviorKpiTiles({ kpis }: BehaviorKpiTilesProps) {
     <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
       {tiles.map((tile, index) => {
         const IconComponent = tile.icon;
+        const kpiInsights = useComponentInsights({
+          componentType: "KPI Tile",
+          componentId: `kpi-${tile.label.toLowerCase().replace(/\s+/g, "-")}`,
+          data: {
+            value: tile.value,
+            trend: tile.trend,
+            rawValue:
+              tile.label === "Avg Purchase Interval"
+                ? kpis.avgPurchaseInterval
+                : tile.label === "Avg Order Value"
+                ? kpis.avgOrderValue
+                : tile.label === "Category Diversity"
+                ? kpis.categoryDiversity
+                : tile.label === "Churn Risk"
+                ? kpis.churnRiskPct
+                : 0,
+          },
+          generateInsights: (data) => {
+            const insights = [];
+            if (tile.label === "Avg Purchase Interval") {
+              if (data.rawValue < 30) {
+                insights.push(
+                  "Customers are purchasing more frequently than average (good retention)"
+                );
+                insights.push("Consider upselling to frequent customers");
+              } else if (data.rawValue > 60) {
+                insights.push("Purchase intervals are longer than optimal");
+                insights.push(
+                  "Implement retention campaigns to reduce interval"
+                );
+              } else {
+                insights.push("Purchase frequency is within normal range");
+              }
+            } else if (tile.label === "Churn Risk") {
+              if (data.rawValue > 20) {
+                insights.push(
+                  "High churn risk detected - immediate action required"
+                );
+                insights.push("Focus on at-risk customer retention programs");
+              } else if (data.rawValue > 10) {
+                insights.push("Moderate churn risk - monitor closely");
+              } else {
+                insights.push("Low churn risk - customers are well-retained");
+              }
+            } else if (tile.label === "Avg Order Value") {
+              insights.push(
+                `Average order value of $${data.rawValue.toFixed(2)}`
+              );
+              insights.push("Consider cross-selling to increase AOV");
+            } else if (tile.label === "Category Diversity") {
+              insights.push(
+                `Customers shop across ${data.rawValue.toFixed(
+                  1
+                )} categories on average`
+              );
+              if (data.rawValue < 2) {
+                insights.push(
+                  "Low category diversity - opportunity for cross-selling"
+                );
+              }
+            } else if (tile.label === "Channel Mix") {
+              insights.push(
+                `${tile.subtitle} of customers prefer ${tile.value}`
+              );
+              insights.push("Consider channel-specific marketing strategies");
+            }
+            return insights;
+          },
+          metadata: {
+            title: tile.label,
+            description: "Key performance indicator",
+            value: tile.value,
+            trend: tile.trend,
+          },
+        });
+
         return (
-          <Card key={index} className="relative overflow-hidden">
+          <Card
+            key={index}
+            className="relative overflow-hidden cursor-pointer hover:shadow-md transition-shadow duration-200"
+            {...kpiInsights.getClickProps()}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {tile.label}

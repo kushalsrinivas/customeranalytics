@@ -29,6 +29,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const timeRange = searchParams.get('timeRange') || 'quarterly';
     const segment = searchParams.get('segment') || undefined;
+    const productCategory = searchParams.get('productCategory') || undefined;
+    const customerId = searchParams.get('customerId') || undefined;
 
     // Connect to SQLite database
     const dbPath = path.join(process.cwd(), 'src', 'lib', 'customers.db');
@@ -38,10 +40,10 @@ export async function GET(request: NextRequest) {
     const { startDate, endDate } = parseTimePeriod(timeRange);
 
     // Fetch customer data
-    const customerData = fetchCustomerData(db, segment);
+    const customerData = fetchCustomerData(db, segment, customerId);
     
     // Fetch transaction data for the specified time period
-    const transactionData = fetchTransactionData(db, startDate, endDate, segment);
+    const transactionData = fetchTransactionData(db, startDate, endDate, segment, productCategory, customerId);
 
     // Close database connection
     db.close();
@@ -119,7 +121,7 @@ function parseTimePeriod(timeRange: string): { startDate: string; endDate: strin
   };
 }
 
-function fetchCustomerData(db: Database.Database, segment?: string): CustomerRecord[] {
+function fetchCustomerData(db: Database.Database, segment?: string, customerId?: string): CustomerRecord[] {
   let query = `
     SELECT DISTINCT
       c.[Customer Key] as customer_id,
@@ -139,7 +141,12 @@ function fetchCustomerData(db: Database.Database, segment?: string): CustomerRec
   
   if (segment) {
     query += ` AND c.[Customer Category Hrchy Code] = ?`;
-    params.push(segment);
+    params.push(parseFloat(segment));
+  }
+
+  if (customerId) {
+    query += ` AND c.[Customer Key] = ?`;
+    params.push(parseInt(customerId));
   }
 
   query += ` LIMIT 1000`;
@@ -148,7 +155,7 @@ function fetchCustomerData(db: Database.Database, segment?: string): CustomerRec
   return stmt.all(...params) as CustomerRecord[];
 }
 
-function fetchTransactionData(db: Database.Database, startDate: string, endDate: string, segment?: string): TransactionRecord[] {
+function fetchTransactionData(db: Database.Database, startDate: string, endDate: string, segment?: string, productCategory?: string, customerId?: string): TransactionRecord[] {
   let query = `
     SELECT 
       [Customer Key] as customer_id,
@@ -175,7 +182,17 @@ function fetchTransactionData(db: Database.Database, startDate: string, endDate:
       FROM dbo_D_Customer 
       WHERE [Customer Category Hrchy Code] = ?
     )`;
-    params.push(segment);
+    params.push(parseFloat(segment));
+  }
+
+  if (productCategory) {
+    query += ` AND [Item Category Hrchy Key] = ?`;
+    params.push(parseInt(productCategory));
+  }
+
+  if (customerId) {
+    query += ` AND [Customer Key] = ?`;
+    params.push(parseInt(customerId));
   }
 
   query += ` LIMIT 10000`;

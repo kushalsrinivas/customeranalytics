@@ -23,6 +23,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { useComponentInsights } from "@/hooks/use-component-insights";
 
 const AVAILABLE_FEATURES = [
   { key: "anomalyScore", label: "Anomaly Score" },
@@ -48,6 +49,90 @@ export function FeatureScatter({
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<AnomalyDataPoint | null>(null);
 
+  const chartInsights = useComponentInsights({
+    componentType: "Scatter Chart",
+    componentId: "feature-scatter-chart",
+    data: {
+      anomalies: anomalies,
+      featureContributions: featureContributions,
+      totalPoints: anomalies?.length || 0,
+      xFeature: xKey,
+      yFeature: yKey,
+      highSeverityCount: anomalies?.filter((a) => a.severity >= 4).length || 0,
+      avgAnomalyScore:
+        anomalies?.reduce((sum, a) => sum + a.anomalyScore, 0) /
+        (anomalies?.length || 1),
+    },
+    generateInsights: (data) => {
+      const insights = [];
+      if (data.totalPoints > 0) {
+        insights.push(
+          `Scatter plot analysis of ${data.totalPoints} anomalous customers`
+        );
+        insights.push(
+          `X-axis: ${
+            AVAILABLE_FEATURES.find((f) => f.key === data.xFeature)?.label
+          }`
+        );
+        insights.push(
+          `Y-axis: ${
+            AVAILABLE_FEATURES.find((f) => f.key === data.yFeature)?.label
+          }`
+        );
+
+        if (data.highSeverityCount > 0) {
+          insights.push(
+            `${data.highSeverityCount} high-severity anomalies (red points) require immediate attention`
+          );
+        }
+
+        insights.push(
+          `Average anomaly score: ${data.avgAnomalyScore.toFixed(3)}`
+        );
+
+        // Feature-specific insights
+        if (
+          data.xFeature === "anomalyScore" ||
+          data.yFeature === "anomalyScore"
+        ) {
+          insights.push(
+            "Look for clusters of high anomaly scores (outliers in top-right)"
+          );
+        }
+
+        if (
+          data.xFeature === "transactionCount" ||
+          data.yFeature === "transactionCount"
+        ) {
+          insights.push(
+            "High transaction counts with high anomaly scores indicate unusual spending patterns"
+          );
+        }
+
+        if (
+          data.xFeature === "totalAmount" ||
+          data.yFeature === "totalAmount"
+        ) {
+          insights.push(
+            "Large amounts with anomalous behavior may indicate fraud or VIP customers"
+          );
+        }
+
+        insights.push(
+          "Click on individual points to investigate specific customers"
+        );
+      } else {
+        insights.push("No anomaly data available for scatter plot analysis");
+      }
+      return insights;
+    },
+    metadata: {
+      title: "Feature Correlation Analysis",
+      description: "Scatter plot of anomaly features",
+      value: anomalies?.length ? `${anomalies.length} anomalies` : "No data",
+    },
+  });
+
   const groupedBySeverity = useMemo(() => {
     const groups: Record<number, any[]> = { 1: [], 2: [], 3: [], 4: [], 5: [] };
     anomalies.forEach((a) => {
@@ -71,7 +156,10 @@ export function FeatureScatter({
   };
 
   return (
-    <Card>
+    <Card
+      className="cursor-pointer hover:shadow-md transition-shadow duration-200"
+      {...chartInsights.getClickProps()}
+    >
       <CardHeader>
         <CardTitle>Feature Contribution Analysis</CardTitle>
         <CardDescription>

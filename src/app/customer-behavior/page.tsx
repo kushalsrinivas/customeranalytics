@@ -33,14 +33,21 @@ import { ChannelJourneySankey } from "@/components/customer-behavior/channel-jou
 
 import { getCustomerBehaviorData } from "@/lib/customer-behavior-data";
 import { CustomerBehaviorData } from "@/types/customer-behavior";
+import { useDashboard } from "@/contexts/dashboard-context";
 
 export default function CustomerBehaviorPage() {
+  const { setCustomerBehaviorData, setLoading: setContextLoading } =
+    useDashboard();
   const [data, setData] = useState<CustomerBehaviorData | null>(null);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState("quarterly");
   const [selectedSegment, setSelectedSegment] = useState<string | undefined>();
   const [selectedCustomer, setSelectedCustomer] = useState<
     string | undefined
+  >();
+  const [selectedProduct, setSelectedProduct] = useState<string | undefined>();
+  const [dateRange, setDateRange] = useState<
+    { start: string; end: string } | undefined
   >();
   const [highlightCategory, setHighlightCategory] = useState<
     string | undefined
@@ -52,25 +59,44 @@ export default function CustomerBehaviorPage() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      setContextLoading(true);
       try {
+        // Determine the effective time range
+        let effectiveTimeRange = timeRange;
+        if (timeRange === "custom" && dateRange) {
+          effectiveTimeRange = `${dateRange.start}:${dateRange.end}`;
+        }
+
         const behaviorData = await getCustomerBehaviorData(
-          timeRange,
-          selectedSegment
+          effectiveTimeRange,
+          selectedSegment,
+          selectedProduct,
+          selectedCustomer
         );
         setData(behaviorData);
+        setCustomerBehaviorData(behaviorData); // Share data with context
       } catch (error) {
         console.error("Failed to fetch customer behavior data:", error);
       } finally {
         setLoading(false);
+        setContextLoading(false);
       }
     };
 
     fetchData();
-  }, [timeRange, selectedSegment]);
+  }, [
+    timeRange,
+    selectedSegment,
+    selectedProduct,
+    selectedCustomer,
+    dateRange,
+  ]);
 
   const handleReset = () => {
     setSelectedSegment(undefined);
     setSelectedCustomer(undefined);
+    setSelectedProduct(undefined);
+    setDateRange(undefined);
     setHighlightCategory(undefined);
     setHighlightChannel(undefined);
   };
@@ -163,6 +189,10 @@ export default function CustomerBehaviorPage() {
             onSegmentChange={setSelectedSegment}
             selectedCustomer={selectedCustomer}
             onCustomerChange={setSelectedCustomer}
+            selectedProduct={selectedProduct}
+            onProductChange={setSelectedProduct}
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
             onReset={handleReset}
           />
         </div>

@@ -3,12 +3,16 @@ import { CustomerBehaviorData } from '@/types/customer-behavior';
 // Client-side function to fetch customer behavior data from API
 export async function getCustomerBehaviorData(
   timeRange: string = 'quarterly',
-  segment?: string
+  segment?: string,
+  productCategory?: string,
+  customerId?: string
 ): Promise<CustomerBehaviorData> {
   try {
     const params = new URLSearchParams({
       timeRange,
-      ...(segment && { segment })
+      ...(segment && { segment }),
+      ...(productCategory && { productCategory }),
+      ...(customerId && { customerId })
     });
 
     const response = await fetch(`/api/customer-behavior?${params}`);

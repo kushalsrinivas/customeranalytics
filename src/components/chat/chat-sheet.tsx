@@ -50,6 +50,39 @@ export function ChatSheet() {
   const [isSending, setIsSending] = React.useState(false);
   const viewportRef = React.useRef<HTMLDivElement | null>(null);
 
+  // State for selected contexts
+  const [selectedContexts, setSelectedContexts] = React.useState<any[]>([]);
+
+  // Listen for context integration events
+  React.useEffect(() => {
+    const handleContextIntegration = (event: CustomEvent) => {
+      const { contexts, contextSummary, backgroundMode } = event.detail;
+
+      if (backgroundMode) {
+        // Handle in background - store contexts but don't show in input
+        setSelectedContexts(contexts);
+        setOpen(true);
+      } else {
+        // Legacy mode - show context in input
+        setInput(contextSummary);
+        setSelectedContexts([]);
+        setOpen(true);
+      }
+    };
+
+    window.addEventListener(
+      "openAIChatWithContext",
+      handleContextIntegration as EventListener
+    );
+
+    return () => {
+      window.removeEventListener(
+        "openAIChatWithContext",
+        handleContextIntegration as EventListener
+      );
+    };
+  }, []);
+
   const { hasMention, atIndex, query } = useMentions(input);
   const filteredAgents = React.useMemo(() => {
     const q = query.toLowerCase();
@@ -84,21 +117,49 @@ export function ChatSheet() {
       : trimmed;
     const agentToUse = agentFromMention || selectedAgent;
 
+    // Prepare context for API if we have selected components
+    let messageWithContext = contentOnly;
+    if (selectedContexts.length > 0) {
+      const contextSummary = selectedContexts
+        .map((context) => {
+          const { componentType, metadata, insights } = context;
+          let summary = `**${componentType}**`;
+          if (metadata?.title) summary += ` - ${metadata.title}`;
+          if (metadata?.value !== undefined) summary += ` (${metadata.value})`;
+          if (insights.length > 0) {
+            summary += `\n• ${insights.join("\n• ")}`;
+          }
+          return summary;
+        })
+        .join("\n\n");
+
+      messageWithContext = `I've selected ${
+        selectedContexts.length
+      } dashboard components for analysis:\n\n${contextSummary}\n\n${
+        contentOnly ||
+        "Please provide insights about these selected components and their relationships."
+      }`;
+    }
+
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
       role: "user",
-      content: trimmed,
+      content: trimmed || "Analyze selected components",
       agent: agentToUse,
     };
     setMessages((m) => [...m, userMsg]);
     setInput("");
+    setSelectedContexts([]); // Clear contexts after sending
     setIsSending(true);
 
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: contentOnly, agent: agentToUse }),
+        body: JSON.stringify({
+          message: messageWithContext,
+          agent: agentToUse,
+        }),
       });
       const data = await res.json();
       const assistantMsg: ChatMessage = {
@@ -144,10 +205,46 @@ export function ChatSheet() {
           <SheetTitle className="flex items-center gap-2">
             <BotIcon className="size-5" />
             Chatbot
+            {selectedContexts.length > 0 && (
+              <div className="ml-auto flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  {selectedContexts.length} component
+                  {selectedContexts.length !== 1 ? "s" : ""} selected
+                </span>
+              </div>
+            )}
           </SheetTitle>
         </SheetHeader>
 
         <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
+          {/* Selected Components Indicator */}
+          {selectedContexts.length > 0 && (
+            <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/20">
+              <CardContent className="p-3">
+                <div className="text-xs font-medium text-blue-800 dark:text-blue-200 mb-2">
+                  Selected Components for Analysis:
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {selectedContexts.map((context, index) => (
+                    <div
+                      key={index}
+                      className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-xs rounded-md"
+                    >
+                      <span className="font-medium">
+                        {context.componentType}
+                      </span>
+                      {context.metadata?.title && (
+                        <span className="text-blue-600 dark:text-blue-300">
+                          - {context.metadata.title}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card className="flex-1 overflow-hidden">
             <CardContent className="h-full p-0">
               <div ref={viewportRef} className="h-[60vh] overflow-y-auto p-4">

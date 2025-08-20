@@ -16,6 +16,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
+import { useComponentInsights } from "@/hooks/use-component-insights";
 
 interface ChannelDonutChartProps {
   channels: ChannelUsage[];
@@ -26,6 +27,72 @@ export function ChannelDonutChart({
   channels,
   highlightChannel,
 }: ChannelDonutChartProps) {
+  const chartInsights = useComponentInsights({
+    componentType: "Channel Donut Chart",
+    componentId: "channel-donut-chart",
+    data: {
+      channels: channels,
+      totalChannels: channels?.length || 0,
+      dominantChannel: channels?.[0]?.channel,
+      dominantChannelPct: channels?.[0]?.percentage,
+    },
+    generateInsights: (data) => {
+      const insights = [];
+      if (data.totalChannels > 0) {
+        insights.push(`Analyzing ${data.totalChannels} customer channels`);
+        if (data.dominantChannel) {
+          insights.push(
+            `Dominant channel: ${
+              data.dominantChannel
+            } (${data.dominantChannelPct?.toFixed(1)}% of customers)`
+          );
+        }
+
+        // Channel diversification analysis
+        if (data.dominantChannelPct > 60) {
+          insights.push(
+            "High channel concentration - consider diversifying customer acquisition"
+          );
+        } else if (data.dominantChannelPct < 30) {
+          insights.push(
+            "Well-balanced channel distribution across customer base"
+          );
+        } else {
+          insights.push("Moderate channel concentration");
+        }
+
+        // Mobile vs Desktop analysis
+        const mobileChannels =
+          channels?.filter(
+            (c) =>
+              c.channel.toLowerCase().includes("mobile") ||
+              c.channel.toLowerCase().includes("app")
+          ) || [];
+        const mobileUsage = mobileChannels.reduce(
+          (sum, c) => sum + (c.percentage || 0),
+          0
+        );
+
+        if (mobileUsage > 50) {
+          insights.push(
+            "Mobile-first customer base - optimize mobile experience"
+          );
+        } else if (mobileUsage < 20) {
+          insights.push(
+            "Desktop-heavy usage - consider mobile engagement strategies"
+          );
+        }
+      } else {
+        insights.push("No channel data available");
+      }
+      return insights;
+    },
+    metadata: {
+      title: "Channel Distribution",
+      description: "Customer channel usage patterns",
+      value: channels?.length ? `${channels.length} channels` : "No data",
+    },
+  });
   const colors = [
     "hsl(var(--chart-1))",
     "hsl(var(--chart-2))",
@@ -98,7 +165,10 @@ export function ChannelDonutChart({
   );
 
   return (
-    <Card>
+    <Card
+      className="cursor-pointer hover:shadow-md transition-shadow duration-200"
+      {...chartInsights.getClickProps()}
+    >
       <CardHeader>
         <CardTitle>Channel Distribution</CardTitle>
         <CardDescription>
